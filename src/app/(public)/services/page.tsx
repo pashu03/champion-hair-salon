@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { ServicesList } from "@/components/services/ServicesList";
 import { Scissors, ShieldCheck, Sparkles } from "lucide-react";
+import { fallbackServices, withPublicFallback } from "@/lib/public-fallback-data";
 
 export const metadata: Metadata = {
   title: "Grooming Services & Rate Card",
@@ -13,20 +14,25 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function ServicesPage() {
-  const services = await prisma.service.findMany({
-    where: { isActive: true },
-    orderBy: [{ displayOrder: "asc" }, { price: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      category: true,
-      description: true,
-      price: true,
-      duration: true,
-      isPopular: true,
-    },
-  });
+  const services = await withPublicFallback(
+    "services",
+    () =>
+      prisma.service.findMany({
+        where: { isActive: true },
+        orderBy: [{ displayOrder: "asc" }, { price: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          category: true,
+          description: true,
+          price: true,
+          duration: true,
+          isPopular: true,
+        },
+      }),
+    fallbackServices
+  );
 
   return (
     <div className="pt-28 pb-24 bg-[#050505] min-h-screen">

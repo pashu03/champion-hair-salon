@@ -1,8 +1,9 @@
 import React from "react";
 import { Metadata } from "next";
 import { ContactForm } from "@/components/contact/ContactForm";
-import { MapPin, Phone, MessageSquare, Clock } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { fallbackBusinessSettings, withPublicFallback } from "@/lib/public-fallback-data";
 
 export const metadata: Metadata = {
   title: "Contact & Location",
@@ -11,7 +12,14 @@ export const metadata: Metadata = {
 };
 
 export default async function ContactPage() {
-  const settings = await prisma.businessSettings.findFirst();
+  const settings = await withPublicFallback(
+    "business settings",
+    () =>
+      prisma.businessSettings.findFirst({
+        select: { address: true, googleMapsEmbedUrl: true },
+      }),
+    fallbackBusinessSettings
+  );
 
   return (
     <div className="pt-28 pb-24 bg-[#050505] min-h-screen">

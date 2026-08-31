@@ -2,7 +2,8 @@ import React from "react";
 import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { ReviewsClient } from "@/components/reviews/ReviewsClient";
-import { Star, MessageSquare } from "lucide-react";
+import { Star } from "lucide-react";
+import { fallbackTestimonials, withPublicFallback } from "@/lib/public-fallback-data";
 
 export const metadata: Metadata = {
   title: "Customer Reviews & Testimonials",
@@ -13,18 +14,23 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function ReviewsPage() {
-  const reviews = await prisma.testimonial.findMany({
-    where: { isPublished: true },
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    select: {
-      id: true,
-      customerName: true,
-      rating: true,
-      review: true,
-      serviceName: true,
-      date: true,
-    },
-  });
+  const reviews = await withPublicFallback(
+    "reviews",
+    () =>
+      prisma.testimonial.findMany({
+        where: { isPublished: true },
+        orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          customerName: true,
+          rating: true,
+          review: true,
+          serviceName: true,
+          date: true,
+        },
+      }),
+    fallbackTestimonials
+  );
 
   return (
     <div className="pt-28 pb-24 bg-[#050505] min-h-screen">

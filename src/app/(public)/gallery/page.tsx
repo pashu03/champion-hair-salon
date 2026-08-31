@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
 import { Camera } from "lucide-react";
+import { fallbackGalleryItems, withPublicFallback } from "@/lib/public-fallback-data";
 
 export const metadata: Metadata = {
   title: "Salon Gallery & Hairstyles",
@@ -13,18 +14,23 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function GalleryPage() {
-  const items = await prisma.galleryItem.findMany({
-    where: { isPublished: true },
-    orderBy: { displayOrder: "asc" },
-    select: {
-      id: true,
-      title: true,
-      category: true,
-      imageUrl: true,
-      altText: true,
-      isBeforeAfter: true,
-    },
-  });
+  const items = await withPublicFallback(
+    "gallery",
+    () =>
+      prisma.galleryItem.findMany({
+        where: { isPublished: true },
+        orderBy: { displayOrder: "asc" },
+        select: {
+          id: true,
+          title: true,
+          category: true,
+          imageUrl: true,
+          altText: true,
+          isBeforeAfter: true,
+        },
+      }),
+    fallbackGalleryItems
+  );
 
   return (
     <div className="pt-28 pb-24 bg-[#050505] min-h-screen">

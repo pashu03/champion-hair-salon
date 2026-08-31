@@ -2,7 +2,12 @@ import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { BookingWizard } from "@/components/booking/BookingWizard";
-import { Calendar, Scissors, ShieldCheck, Loader2 } from "lucide-react";
+import { Calendar, Loader2 } from "lucide-react";
+import {
+  fallbackServices,
+  fallbackStaff,
+  withPublicFallback,
+} from "@/lib/public-fallback-data";
 
 export const metadata: Metadata = {
   title: "Book Appointment Online",
@@ -13,31 +18,41 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function BookingPage() {
-  const services = await prisma.service.findMany({
-    where: { isActive: true },
-    orderBy: [{ displayOrder: "asc" }, { price: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      category: true,
-      price: true,
-      duration: true,
-      description: true,
-      isPopular: true,
-    },
-  });
+  const services = await withPublicFallback(
+    "booking services",
+    () =>
+      prisma.service.findMany({
+        where: { isActive: true },
+        orderBy: [{ displayOrder: "asc" }, { price: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          price: true,
+          duration: true,
+          description: true,
+          isPopular: true,
+        },
+      }),
+    fallbackServices
+  );
 
-  const staffList = await prisma.staff.findMany({
-    where: { isActive: true },
-    orderBy: { displayOrder: "asc" },
-    select: {
-      id: true,
-      name: true,
-      role: true,
-      photo: true,
-      specialties: true,
-    },
-  });
+  const staffList = await withPublicFallback(
+    "booking staff",
+    () =>
+      prisma.staff.findMany({
+        where: { isActive: true },
+        orderBy: { displayOrder: "asc" },
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          photo: true,
+          specialties: true,
+        },
+      }),
+    fallbackStaff
+  );
 
   return (
     <div className="pt-28 pb-24 bg-[#050505] min-h-screen">
