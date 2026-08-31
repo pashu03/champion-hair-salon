@@ -3,15 +3,15 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Scissors, Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
+import { Scissors, Lock, Mail, ArrowRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@championhairsalon.com");
-  const [password, setPassword] = useState("Champion@1998");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -34,8 +34,8 @@ export default function AdminLoginPage() {
 
       router.push("/admin/dashboard");
       router.refresh();
-    } catch (err: any) {
-      setErrorMessage(err.message || "Invalid email or password");
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Invalid email or password");
     } finally {
       setIsLoading(false);
     }
@@ -94,16 +94,6 @@ export default function AdminLoginPage() {
               placeholder="••••••••••••"
               leftIcon={<Lock className="w-4 h-4" />}
             />
-
-            {/* Quick credentials hint */}
-            <div className="p-3 bg-[#1A1A1A] rounded-lg border border-white/5 text-[11px] text-[#8E8E8E] space-y-1">
-              <div className="flex items-center gap-1.5 text-[#D4AF37] font-semibold">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Default Admin Credentials:</span>
-              </div>
-              <p>Email: <code className="text-white">admin@championhairsalon.com</code></p>
-              <p>Password: <code className="text-white">Champion@1998</code></p>
-            </div>
 
             <Button
               type="submit"

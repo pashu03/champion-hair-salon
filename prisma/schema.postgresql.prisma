@@ -1,5 +1,5 @@
 // Production PostgreSQL schema for Champion Hair Salon (Neon / Supabase / Vercel Postgres)
-// Copy this to schema.prisma when connecting to a remote PostgreSQL instance
+// Selected automatically by prisma.config.ts on Vercel or with PRISMA_SCHEMA_PROVIDER=postgresql.
 
 generator client {
   provider = "prisma-client-js"

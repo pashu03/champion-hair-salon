@@ -2,11 +2,19 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "champion_hair_salon_super_secret_jwt_key_established_1998"
-);
-
 const COOKIE_NAME = "champion_admin_session";
+
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET must be configured in production.");
+  }
+
+  return new TextEncoder().encode(
+    secret || "local-development-only-change-before-deployment"
+  );
+}
 
 export interface SessionUser {
   id: string;
@@ -42,7 +50,7 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 /**
@@ -50,7 +58,7 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
  */
 export async function verifySessionToken(token: string): Promise<SessionUser | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return {
       id: payload.id as string,
       email: payload.email as string,

@@ -75,7 +75,9 @@ cp .env.example .env
 Default `.env` contents for zero-setup local execution:
 ```env
 DATABASE_URL="file:./dev.db"
-JWT_SECRET="champion_hair_salon_super_secret_jwt_key_established_1998"
+JWT_SECRET="replace-with-a-long-random-secret"
+ADMIN_EMAIL="admin@championhairsalon.com"
+ADMIN_PASSWORD="choose-a-strong-local-password"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 NEXT_PUBLIC_WHATSAPP_NUMBER="918888857057"
 NEXT_PUBLIC_PHONE_NUMBER="+91 8888857057"
@@ -104,35 +106,43 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 🔐 Admin Portal Credentials
+## 🔐 Local Admin Portal Credentials
 
 - **URL:** [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
-- **Admin Email:** `admin@championhairsalon.com`
-- **Password:** `Champion@1998`
+- **Admin Email:** the `ADMIN_EMAIL` used when seeding
+- **Password:** the `ADMIN_PASSWORD` used when seeding
 
-*(You can change the password or add additional admin users in the database).*
+These credentials are for local development only. Production seeding requires
+`ADMIN_PASSWORD`, and the login page never displays or pre-fills credentials.
 
 ---
 
 ## 🌐 Production Deployment (Vercel + PostgreSQL)
 
-### 1. PostgreSQL Database (Neon / Supabase / Vercel Postgres)
-1. Create a free PostgreSQL database on [Neon.tech](https://neon.tech) or [Supabase.com](https://supabase.com).
-2. Copy `prisma/schema.postgresql.prisma` to `prisma/schema.prisma` (or set `provider = "postgresql"` in `schema.prisma`).
-3. Set your production `DATABASE_URL` in your deployment environment variables:
+### 1. PostgreSQL Database (Vercel Marketplace / Neon / Supabase)
+1. Create and connect a PostgreSQL database. A Vercel Marketplace database normally adds `DATABASE_URL` to the project automatically.
+2. Otherwise, set the production and preview `DATABASE_URL` in Vercel:
    ```env
-   DATABASE_URL="postgresql://username:password@ep-sample.region.neon.tech/champion_db?sslmode=require"
+    DATABASE_URL="postgresql://username:password@ep-sample.region.neon.tech/champion_db?sslmode=require"
    ```
+
+The Prisma config selects `schema.postgresql.prisma` automatically when
+`VERCEL=1`. The Vercel build script generates the correct client and applies
+the committed PostgreSQL migrations before running `next build`.
 
 ### 2. Deploy to Vercel
 1. Import repository on [Vercel](https://vercel.com).
 2. Set Environment Variables:
    - `DATABASE_URL`
-   - `JWT_SECRET`
+   - `JWT_SECRET` (a long random value)
    - `NEXT_PUBLIC_APP_URL`
    - `NEXT_PUBLIC_WHATSAPP_NUMBER`
-3. Run Build & Deploy.
-4. Execute `npx prisma db push && npx tsx prisma/seed.ts` via Vercel CLI or build hook.
+3. Deploy the project. The initial schema migration runs automatically.
+4. Seed the production database once from a trusted terminal with
+   `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and
+   `PRISMA_SCHEMA_PROVIDER=postgresql` set, then run `npm run db:seed`.
+
+Never commit production database, JWT, or admin secrets.
 
 ---
 

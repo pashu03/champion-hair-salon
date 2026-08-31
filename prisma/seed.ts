@@ -7,21 +7,36 @@ async function main() {
   console.log("🌱 Seeding Champion Hair Salon database...");
 
   // 1. Admin User
-  const adminPasswordHash = await bcrypt.hash("Champion@1998", 10);
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@championhairsalon.com";
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const isRemoteDatabase = /^(postgres(?:ql)?|prisma\+postgres):\/\//i.test(
+    process.env.DATABASE_URL || ""
+  );
+
+  if (isRemoteDatabase && !adminPassword) {
+    throw new Error(
+      "ADMIN_PASSWORD is required when seeding a remote production database."
+    );
+  }
+
+  const adminPasswordHash = await bcrypt.hash(
+    adminPassword || "Champion@1998",
+    10
+  );
   await prisma.adminUser.upsert({
-    where: { email: "admin@championhairsalon.com" },
+    where: { email: adminEmail },
     update: {
       passwordHash: adminPasswordHash,
       name: "Sachin Mahaley",
     },
     create: {
-      email: "admin@championhairsalon.com",
+      email: adminEmail,
       passwordHash: adminPasswordHash,
       name: "Sachin Mahaley",
       role: "ADMIN",
     },
   });
-  console.log("✓ Admin user created: admin@championhairsalon.com / Champion@1998");
+  console.log(`✓ Admin user configured: ${adminEmail}`);
 
   // 2. Business Settings
   const existingSettings = await prisma.businessSettings.findFirst();
