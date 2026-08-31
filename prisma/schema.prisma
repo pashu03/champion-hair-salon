@@ -1,0 +1,199 @@
+// Prisma schema for Champion Hair Salon
+// Development: SQLite (zero-setup local execution)
+// Production: PostgreSQL (Neon / Supabase / Vercel Postgres) - see schema.postgresql.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String   @default("Sachin Mahaley")
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model BusinessSettings {
+  id                 String   @id @default(cuid())
+  salonName          String   @default("CHAMPION HAIR SALON")
+  tagline            String   @default("Where Tradition Meets Excellence in Men's Grooming")
+  establishedYear    Int      @default(1998)
+  ownerName          String   @default("Sachin Mahaley")
+  phone              String   @default("+91 8888857057")
+  altPhone           String?  @default("+91 9158846787")
+  whatsappNumber     String   @default("918888857057")
+  email              String   @default("info@championhairsalon.com")
+  address            String   @default("Champion Hair Salon, Main Market, Maharashtra, India")
+  city               String   @default("Maharashtra")
+  googleMapsEmbedUrl String?  @default("https://maps.google.com/maps?q=Champion+Hair+Salon&t=&z=13&ie=UTF8&iwloc=&output=embed")
+  googleReviewUrl    String?  @default("https://search.google.com/local/writereview?placeid=championhairsalon")
+  instagramUrl       String?  @default("https://instagram.com/championhairsalon")
+  facebookUrl        String?  @default("https://facebook.com/championhairsalon")
+  slotInterval       Int      @default(30)
+  advanceNoticeHours Int      @default(1)
+  maxAdvanceDays     Int      @default(30)
+  cancellationHours  Int      @default(2)
+  currencySymbol     String   @default("₹")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model BusinessHours {
+  id         String   @id @default(cuid())
+  dayOfWeek  Int      @unique // 0=Sunday, 1=Monday, ..., 6=Saturday
+  dayName    String
+  isOpen     Boolean  @default(true)
+  openTime   String   @default("09:00") // HH:mm
+  closeTime  String   @default("21:00") // HH:mm
+  hasBreak   Boolean  @default(false)
+  breakStart String?  @default("13:30")
+  breakEnd   String?  @default("14:30")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model BlockedPeriod {
+  id          String   @id @default(cuid())
+  staffId     String?
+  staff       Staff?   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  title       String
+  startDate   String   // YYYY-MM-DD
+  endDate     String   // YYYY-MM-DD
+  startTime   String?  // HH:mm
+  endTime     String?  // HH:mm
+  isAllDay    Boolean  @default(true)
+  reason      String?
+  createdAt   DateTime @default(now())
+}
+
+model Staff {
+  id             String              @id @default(cuid())
+  name           String
+  role           String              @default("Master Barber")
+  phone          String?
+  photo          String?
+  bio            String?
+  specialties    String              @default("Hair Cut, Styling, Shaving, Beard Trimming, Hair Colour")
+  isActive       Boolean             @default(true)
+  displayOrder   Int                 @default(0)
+  availabilities StaffAvailability[]
+  appointments   Appointment[]
+  blockedPeriods BlockedPeriod[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+}
+
+model StaffAvailability {
+  id        String   @id @default(cuid())
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  dayOfWeek Int      // 0-6
+  isWorking Boolean  @default(true)
+  startTime String   @default("09:00")
+  endTime   String   @default("21:00")
+
+  @@unique([staffId, dayOfWeek])
+}
+
+model Service {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  category     String        // Hair Cutting, Shaving & Beard, Hair Colour, Head Massage, Threading, Face Massage & Facials, Packages
+  description  String?
+  price        Int           // INR
+  duration     Int           // minutes
+  image        String?
+  isPopular    Boolean       @default(false)
+  isActive     Boolean       @default(true)
+  displayOrder Int           @default(0)
+  appointments Appointment[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Customer {
+  id           String        @id @default(cuid())
+  name         String
+  phone        String        @unique
+  email        String?
+  totalVisits  Int           @default(1)
+  lastVisit    DateTime?     @default(now())
+  notes        String?
+  appointments Appointment[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Appointment {
+  id                String   @id @default(cuid())
+  appointmentNumber String   @unique // e.g. CH-2026-000101
+  customerId        String
+  customer          Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  serviceId         String
+  service           Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  staffId           String?
+  staff             Staff?   @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  date              String   // YYYY-MM-DD
+  startTime         String   // HH:mm
+  endTime           String   // HH:mm
+  duration          Int      // minutes
+  totalPrice        Int      // INR
+  status            String   @default("CONFIRMED") // PENDING, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW
+  customerNotes     String?
+  adminNotes        String?
+  source            String   @default("ONLINE") // ONLINE, WALK_IN, PHONE
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([date])
+  @@index([status])
+  @@index([staffId, date])
+}
+
+model GalleryItem {
+  id             String   @id @default(cuid())
+  title          String
+  category       String   // Haircuts, Beard Styles, Hair Colour, Salon, Before & After
+  imageUrl       String
+  altText        String
+  isBeforeAfter  Boolean  @default(false)
+  beforeImageUrl String?
+  afterImageUrl  String?
+  displayOrder   Int      @default(0)
+  isPublished    Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Testimonial {
+  id           String   @id @default(cuid())
+  customerName String
+  rating       Int      @default(5)
+  review       String
+  serviceName  String?  @default("Hair Cut & Styling")
+  isPublished  Boolean  @default(true)
+  isFeatured   Boolean  @default(false)
+  date         String?  @default("Recent")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ContactEnquiry {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  message   String
+  status    String   @default("UNREAD") // UNREAD, READ, RESOLVED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
