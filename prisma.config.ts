@@ -1,9 +1,13 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
+import { configureDatabaseUrl } from "./src/lib/database-url";
+
+const database = configureDatabaseUrl();
 
 const usePostgreSQL =
   process.env.VERCEL === "1" ||
-  process.env.PRISMA_SCHEMA_PROVIDER === "postgresql";
+  process.env.PRISMA_SCHEMA_PROVIDER === "postgresql" ||
+  database.isPostgreSQL;
 
 // `prisma generate` does not connect to the database, but Prisma 6 still
 // validates that the URL exists. This placeholder keeps dependency installs
@@ -19,6 +23,11 @@ export default defineConfig({
   schema: usePostgreSQL
     ? "./prisma/schema.postgresql.prisma"
     : "./prisma/schema.prisma",
+  // Supabase recommends a pooled URL for serverless application traffic and
+  // a direct/session URL for migrations. Fall back to DATABASE_URL locally.
+  datasource: {
+    url: process.env.DIRECT_URL?.trim() || process.env.DATABASE_URL!,
+  },
   migrations: {
     path: usePostgreSQL
       ? "./prisma/migrations-postgresql"

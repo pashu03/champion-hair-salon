@@ -27,7 +27,6 @@ async function main() {
     where: { email: adminEmail },
     update: {
       passwordHash: adminPasswordHash,
-      name: "Sachin Mahaley",
     },
     create: {
       email: adminEmail,
@@ -82,7 +81,7 @@ async function main() {
   for (const day of days) {
     await prisma.businessHours.upsert({
       where: { dayOfWeek: day.dayOfWeek },
-      update: day,
+      update: {},
       create: day,
     });
   }
@@ -91,16 +90,7 @@ async function main() {
   // 4. Staff / Barbers
   const sachin = await prisma.staff.upsert({
     where: { id: "staff-sachin-mahaley" },
-    update: {
-      name: "Sachin Mahaley",
-      role: "Founder & Master Barber",
-      phone: "+91 8888857057",
-      photo: "/images/sachin-mahaley.jpg",
-      bio: "Founder of Champion Hair Salon with over 28 years of master barber craftsmanship since 1998. Specialized in precision haircutting, classic shaves, and personalized client styling.",
-      specialties: "Precision Haircut, Beard Sculpting, Classic Straight-Razor Shave, Hair Colour & Facials",
-      isActive: true,
-      displayOrder: 1,
-    },
+    update: {},
     create: {
       id: "staff-sachin-mahaley",
       name: "Sachin Mahaley",
@@ -116,16 +106,7 @@ async function main() {
 
   const seniorBarber = await prisma.staff.upsert({
     where: { id: "staff-senior-stylist" },
-    update: {
-      name: "Rahul & Team",
-      role: "Senior Barber & Stylist",
-      phone: "+91 9158846787",
-      photo: null,
-      bio: "Expert stylist trained under Sachin Mahaley, specializing in modern fade cuts, beard design, head massages, and skincare facials.",
-      specialties: "Modern Fades, Head Massage, D-Tan & Facial Care",
-      isActive: true,
-      displayOrder: 2,
-    },
+    update: {},
     create: {
       id: "staff-senior-stylist",
       name: "Rahul & Team",
@@ -143,13 +124,13 @@ async function main() {
   for (let d = 0; d <= 6; d++) {
     await prisma.staffAvailability.upsert({
       where: { staffId_dayOfWeek: { staffId: sachin.id, dayOfWeek: d } },
-      update: { isWorking: true, startTime: "09:00", endTime: "22:00" },
+      update: {},
       create: { staffId: sachin.id, dayOfWeek: d, isWorking: true, startTime: "09:00", endTime: "22:00" },
     });
 
     await prisma.staffAvailability.upsert({
       where: { staffId_dayOfWeek: { staffId: seniorBarber.id, dayOfWeek: d } },
-      update: { isWorking: true, startTime: "09:00", endTime: "22:00" },
+      update: {},
       create: { staffId: seniorBarber.id, dayOfWeek: d, isWorking: true, startTime: "09:00", endTime: "22:00" },
     });
   }
@@ -403,7 +384,7 @@ async function main() {
   for (const s of servicesData) {
     await prisma.service.upsert({
       where: { slug: s.slug },
-      update: s,
+      update: {},
       create: s,
     });
   }

@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSessionToken, setSessionCookie } from "@/lib/auth";
+import { configureDatabaseUrl } from "@/lib/database-url";
 import { adminLoginSchema } from "@/lib/validations";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const responseHeaders = {
+  "Cache-Control": "no-store, max-age=0",
+};
 
 export async function POST(req: Request) {
   try {
@@ -15,7 +24,7 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json(
         { error: "Invalid email or password" },
-        { status: 401 }
+        { status: 401, headers: responseHeaders }
       );
     }
 
@@ -23,7 +32,7 @@ export async function POST(req: Request) {
     if (!isValid) {
       return NextResponse.json(
         { error: "Invalid email or password" },
-        { status: 401 }
+        { status: 401, headers: responseHeaders }
       );
     }
 
@@ -37,14 +46,45 @@ export async function POST(req: Request) {
     const token = await createSessionToken(sessionUser);
     await setSessionCookie(token);
 
-    return NextResponse.json({
-      success: true,
-      user: sessionUser,
-    });
-  } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || "Authentication failed" },
-      { status: 400 }
+      {
+        success: true,
+        user: sessionUser,
+      },
+      { headers: responseHeaders }
+    );
+  } catch (error: unknown) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: "Please enter a valid admin email and password." },
+        { status: 400, headers: responseHeaders }
+      );
+    }
+
+    const database = configureDatabaseUrl();
+    const isDatabaseConfigurationError =
+      !database.configured ||
+      (process.env.VERCEL === "1" && !database.isPostgreSQL);
+
+    console.error(
+      `Admin login error [${
+        isDatabaseConfigurationError
+          ? "DATABASE_NOT_CONFIGURED"
+          : "AUTHENTICATION_SERVICE_ERROR"
+      }]:`,
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error: isDatabaseConfigurationError
+          ? "Admin login is temporarily unavailable. The production database must be connected."
+          : "Admin login is temporarily unavailable. Please try again.",
+        code: isDatabaseConfigurationError
+          ? "DATABASE_NOT_CONFIGURED"
+          : "AUTHENTICATION_SERVICE_ERROR",
+      },
+      { status: 503, headers: responseHeaders }
     );
   }
 }
