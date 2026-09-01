@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { calculateAvailableSlots } from "@/lib/availability";
+import { calculateAvailableSlots, isValidDateString } from "@/lib/availability";
 
 export async function GET(req: NextRequest) {
   try {
@@ -8,25 +8,32 @@ export async function GET(req: NextRequest) {
     const duration = parseInt(searchParams.get("duration") || "30", 10);
     const staffId = searchParams.get("staffId") || undefined;
 
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (!date || !isValidDateString(date)) {
       return NextResponse.json(
         { error: "Invalid date format. Expected YYYY-MM-DD" },
         { status: 400 }
       );
     }
 
+    if (!Number.isInteger(duration) || duration < 5 || duration > 480) {
+      return NextResponse.json(
+        { error: "Invalid service duration." },
+        { status: 400 }
+      );
+    }
+
     const availability = await calculateAvailableSlots({
       date,
-      serviceDuration: isNaN(duration) ? 30 : duration,
+      serviceDuration: duration,
       staffId: staffId || null,
     });
 
     return NextResponse.json(availability);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Availability API Error:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to calculate slot availability" },
-      { status: 500 }
+      { error: "Live availability is temporarily unavailable. Please try again." },
+      { status: 503 }
     );
   }
 }

@@ -6,17 +6,13 @@ import confetti from "canvas-confetti";
 import {
   CheckCircle2,
   Calendar,
-  Clock,
   Scissors,
-  User,
   Phone,
   MessageSquare,
   MapPin,
-  Share2,
   Printer,
   PlusCircle,
   Download,
-  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -29,6 +25,7 @@ import {
   createGoogleCalendarUrl,
   createIcsDataUrl,
 } from "@/lib/calendar-export";
+import { formatTimeRange12Hour } from "@/lib/time-format";
 
 export interface ConfirmedAppointment {
   id: string;
@@ -193,7 +190,7 @@ export const BookingConfirmationView = ({
               {appointment.date}
             </span>
             <p className="text-xs text-white print:text-black font-semibold">
-              {appointment.startTime} – {appointment.endTime}
+              {formatTimeRange12Hour(appointment.startTime, appointment.endTime)}
             </p>
           </div>
         </div>

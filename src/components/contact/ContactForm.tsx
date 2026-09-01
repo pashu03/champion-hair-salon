@@ -104,7 +104,7 @@ export const ContactForm = () => {
             <div>
               <h4 className="text-sm font-bold text-white uppercase tracking-wider">Working Hours</h4>
               <p className="text-sm font-semibold text-white mt-1">Monday – Sunday</p>
-              <p className="text-xs text-[#8E8E8E]">09:00 AM – 09:00 PM (Open 7 Days)</p>
+              <p className="text-xs text-[#8E8E8E]">9:00 AM – 10:00 PM (Open 7 Days)</p>
             </div>
           </Card>
 

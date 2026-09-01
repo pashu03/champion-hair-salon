@@ -16,6 +16,7 @@ import {
   Clock,
   UserCheck,
   Settings,
+  Database,
   LogOut,
   ExternalLink,
 } from "lucide-react";
@@ -32,6 +33,7 @@ const ADMIN_NAV = [
   { name: "Business Hours", href: "/admin/business-hours", icon: Clock },
   { name: "Customer Database", href: "/admin/customers", icon: UserCheck },
   { name: "Settings", href: "/admin/settings", icon: Settings },
+  { name: "System & Database", href: "/admin/system", icon: Database },
 ];
 
 export const AdminSidebar = ({

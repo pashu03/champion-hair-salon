@@ -1,5 +1,7 @@
 import { prisma } from "./prisma";
 
+export const SALON_TIME_ZONE = "Asia/Kolkata";
+
 export interface AvailableSlot {
   time: string; // HH:mm format (e.g. "10:00")
   endTime: string; // HH:mm format (e.g. "10:30")
@@ -10,6 +12,56 @@ export interface AvailabilityResult {
   isOpen: boolean;
   reason?: string;
   slots: AvailableSlot[];
+}
+
+export interface SalonDateTime {
+  date: string;
+  minutesFromMidnight: number;
+}
+
+/**
+ * Returns the current calendar date and time in the salon's timezone. Serverless
+ * runtimes commonly use UTC, so booking rules must not use the server timezone.
+ */
+export function getSalonDateTime(now = new Date()): SalonDateTime {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SALON_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value || "";
+  const hour = Number(part("hour"));
+  const minute = Number(part("minute"));
+
+  return {
+    date: `${part("year")}-${part("month")}-${part("day")}`,
+    minutesFromMidnight: hour * 60 + minute,
+  };
+}
+
+export function isValidDateString(date: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+
+  const [year, month, day] = date.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+}
+
+export function addDaysToDateString(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const result = new Date(Date.UTC(year, month - 1, day + days));
+  return result.toISOString().slice(0, 10);
 }
 
 /**
@@ -51,15 +103,41 @@ export async function calculateAvailableSlots(params: {
 }): Promise<AvailabilityResult> {
   const { date, serviceDuration, staffId } = params;
 
+  if (!isValidDateString(date)) {
+    return {
+      isOpen: false,
+      reason: "Please select a valid booking date.",
+      slots: [],
+    };
+  }
+
   // 1. Determine day of week (0=Sunday ... 6=Saturday)
   const [year, month, day] = date.split("-").map(Number);
-  const targetDate = new Date(year, month - 1, day);
-  const dayOfWeek = targetDate.getDay();
+  const targetDate = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = targetDate.getUTCDay();
 
   // 2. Fetch business settings & business hours
   const settings = await prisma.businessSettings.findFirst();
   const slotInterval = settings?.slotInterval || 30;
   const advanceNoticeHours = settings?.advanceNoticeHours || 1;
+  const maxAdvanceDays = settings?.maxAdvanceDays || 30;
+  const salonNow = getSalonDateTime();
+
+  if (date < salonNow.date) {
+    return {
+      isOpen: false,
+      reason: "This date has already passed. Please choose another date.",
+      slots: [],
+    };
+  }
+
+  if (date > addDaysToDateString(salonNow.date, maxAdvanceDays)) {
+    return {
+      isOpen: false,
+      reason: `Appointments can be booked up to ${maxAdvanceDays} days in advance.`,
+      slots: [],
+    };
+  }
 
   const businessHours = await prisma.businessHours.findUnique({
     where: { dayOfWeek },
@@ -152,12 +230,9 @@ export async function calculateAvailableSlots(params: {
   }
 
   // Calculate current cutoff time for same-day bookings
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}-${now.getDate().toString().padStart(2, "0")}`;
-  const isToday = date === todayStr;
-  const currentMinsFromMidnight = now.getHours() * 60 + now.getMinutes();
+  const isToday = date === salonNow.date;
   const minAllowedSlotMins = isToday
-    ? currentMinsFromMidnight + advanceNoticeHours * 60
+    ? salonNow.minutesFromMidnight + advanceNoticeHours * 60
     : 0;
 
   const availableSlots: AvailableSlot[] = [];

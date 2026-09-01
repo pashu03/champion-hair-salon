@@ -1,169 +1,204 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+import { ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
 import { bookingFormSchema } from "@/lib/validations";
 import { generateAppointmentNumber } from "@/lib/booking-id";
-import { timeToMinutes, minutesToTime, isOverlapping } from "@/lib/availability";
+import {
+  calculateAvailableSlots,
+  isOverlapping,
+  minutesToTime,
+  timeToMinutes,
+} from "@/lib/availability";
+
+class BookingRequestError extends Error {
+  constructor(message: string, readonly status = 400) {
+    super(message);
+    this.name = "BookingRequestError";
+  }
+}
+
+const isRetryableTransactionError = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const validated = bookingFormSchema.parse(body);
-
     const { serviceId, staffId, date, time, name, phone, email, notes } = validated;
 
-    // Run within a Prisma transaction to prevent concurrency / double-booking collisions
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Verify Service exists and is active
-      const service = await tx.service.findUnique({
-        where: { id: serviceId },
-      });
+    // Availability is authoritative on the server. A client cannot submit a
+    // closed, expired, off-shift, blocked, or fabricated time slot.
+    const requestedService = await prisma.service.findUnique({
+      where: { id: serviceId },
+    });
 
-      if (!service || !service.isActive) {
-        throw new Error("The selected service is not available for booking.");
-      }
+    if (!requestedService || !requestedService.isActive) {
+      throw new BookingRequestError(
+        "The selected service is not available for booking.",
+        404
+      );
+    }
 
-      // Calculate start and end times in minutes
-      const startMins = timeToMinutes(time);
-      const endMins = startMins + service.duration;
-      const endTimeStr = minutesToTime(endMins);
+    const availability = await calculateAvailableSlots({
+      date,
+      serviceDuration: requestedService.duration,
+      staffId: staffId || null,
+    });
+    const requestedSlot = availability.slots.find((slot) => slot.time === time);
 
-      // 2. Determine and verify staff assignment
-      let assignedStaffId = staffId || null;
+    if (!availability.isOpen || !requestedSlot) {
+      throw new BookingRequestError(
+        availability.reason ||
+          "That time slot is no longer available. Please choose another time.",
+        409
+      );
+    }
 
-      if (assignedStaffId) {
-        const staffMember = await tx.staff.findUnique({
-          where: { id: assignedStaffId },
-          include: {
-            availabilities: true,
-          },
-        });
+    const candidateStaffIds = requestedSlot.availableBarbers.map((barber) => barber.id);
+    if (staffId && !candidateStaffIds.includes(staffId)) {
+      throw new BookingRequestError(
+        "The selected barber is not available at that time.",
+        409
+      );
+    }
 
-        if (!staffMember || !staffMember.isActive) {
-          throw new Error("The selected barber is currently not active.");
-        }
-      } else {
-        // If "Any Barber" was chosen, find a free active barber for this slot
-        const activeBarbers = await tx.staff.findMany({
-          where: { isActive: true },
-        });
-
-        const dayOfWeek = new Date(date).getDay();
-
-        // Check existing appointments on this date
-        const existingAppts = await tx.appointment.findMany({
-          where: {
-            date,
-            status: { notIn: ["CANCELLED"] },
-          },
-        });
-
-        // Find the first barber who is free during this slot
-        for (const barber of activeBarbers) {
-          const hasConflict = existingAppts.some((appt) => {
-            if (appt.staffId && appt.staffId !== barber.id) return false;
-            const aStart = timeToMinutes(appt.startTime);
-            const aEnd = timeToMinutes(appt.endTime);
-            return isOverlapping(startMins, endMins, aStart, aEnd);
+    const createAppointment = () =>
+      prisma.$transaction(
+        async (tx) => {
+          const service = await tx.service.findUnique({
+            where: { id: serviceId },
           });
 
-          if (!hasConflict) {
-            assignedStaffId = barber.id;
-            break;
+          if (!service || !service.isActive) {
+            throw new BookingRequestError(
+              "The selected service is not available for booking.",
+              404
+            );
           }
-        }
-      }
 
-      // 3. Double-Booking Conflict Check
-      if (assignedStaffId) {
-        const conflictingAppointments = await tx.appointment.findMany({
-          where: {
-            date,
-            staffId: assignedStaffId,
-            status: { notIn: ["CANCELLED"] },
-          },
-        });
+          const startMins = timeToMinutes(time);
+          const endMins = startMins + service.duration;
+          const endTime = minutesToTime(endMins);
+          const eligibleStaff = await tx.staff.findMany({
+            where: {
+              id: { in: staffId ? [staffId] : candidateStaffIds },
+              isActive: true,
+            },
+            orderBy: { displayOrder: "asc" },
+          });
+          const existingAppointments = await tx.appointment.findMany({
+            where: {
+              date,
+              status: { notIn: ["CANCELLED"] },
+            },
+          });
 
-        const hasDoubleBooking = conflictingAppointments.some((appt) => {
-          const aStart = timeToMinutes(appt.startTime);
-          const aEnd = timeToMinutes(appt.endTime);
-          return isOverlapping(startMins, endMins, aStart, aEnd);
-        });
+          const assignedStaff = eligibleStaff.find((barber) =>
+            existingAppointments.every((appointment) => {
+              if (appointment.staffId && appointment.staffId !== barber.id) return true;
 
-        if (hasDoubleBooking) {
-          throw new Error(
-            "That time slot was just booked by another customer. Please choose another time."
+              return !isOverlapping(
+                startMins,
+                endMins,
+                timeToMinutes(appointment.startTime),
+                timeToMinutes(appointment.endTime)
+              );
+            })
           );
-        }
-      }
 
-      // 4. Upsert or find Customer record based on normalized phone
-      const normalizedPhone = phone.replace(/[^0-9]/g, "");
-      let customer = await tx.customer.findUnique({
-        where: { phone: normalizedPhone },
-      });
+          if (!assignedStaff) {
+            throw new BookingRequestError(
+              "That time slot was just booked by another customer. Please choose another time.",
+              409
+            );
+          }
 
-      if (customer) {
-        customer = await tx.customer.update({
-          where: { id: customer.id },
-          data: {
-            name: name, // update name to latest provided
-            email: email || customer.email,
-            totalVisits: { increment: 1 },
-            lastVisit: new Date(),
-          },
-        });
-      } else {
-        customer = await tx.customer.create({
-          data: {
-            name: name,
-            phone: normalizedPhone,
-            email: email || null,
-            totalVisits: 1,
-            lastVisit: new Date(),
-          },
-        });
-      }
+          const normalizedPhone = phone.replace(/[^0-9]/g, "");
+          const existingCustomer = await tx.customer.findUnique({
+            where: { phone: normalizedPhone },
+          });
+          const customer = existingCustomer
+            ? await tx.customer.update({
+                where: { id: existingCustomer.id },
+                data: {
+                  name,
+                  email: email || existingCustomer.email,
+                  totalVisits: { increment: 1 },
+                  lastVisit: new Date(),
+                },
+              })
+            : await tx.customer.create({
+                data: {
+                  name,
+                  phone: normalizedPhone,
+                  email: email || null,
+                  totalVisits: 1,
+                  lastVisit: new Date(),
+                },
+              });
 
-      // 5. Generate human-readable appointment number e.g. CH-2026-000101
-      const appointmentNumber = generateAppointmentNumber();
-
-      // 6. Create the Appointment
-      const appointment = await tx.appointment.create({
-        data: {
-          appointmentNumber,
-          customerId: customer.id,
-          serviceId: service.id,
-          staffId: assignedStaffId,
-          date,
-          startTime: time,
-          endTime: endTimeStr,
-          duration: service.duration,
-          totalPrice: service.price,
-          status: "CONFIRMED", // Instant confirmed booking for frictionless salon flow
-          customerNotes: notes || null,
-          source: "ONLINE",
+          return tx.appointment.create({
+            data: {
+              appointmentNumber: generateAppointmentNumber(),
+              customerId: customer.id,
+              serviceId: service.id,
+              staffId: assignedStaff.id,
+              date,
+              startTime: time,
+              endTime,
+              duration: service.duration,
+              totalPrice: service.price,
+              status: "CONFIRMED",
+              customerNotes: notes || null,
+              source: "ONLINE",
+            },
+            include: {
+              service: true,
+              staff: true,
+              customer: true,
+            },
+          });
         },
-        include: {
-          service: true,
-          staff: true,
-          customer: true,
-        },
-      });
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      );
 
-      return appointment;
-    });
+    let result;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        result = await createAppointment();
+        break;
+      } catch (error: unknown) {
+        if (attempt < 2 && isRetryableTransactionError(error)) continue;
+        throw error;
+      }
+    }
 
-    return NextResponse.json({
-      success: true,
-      appointmentId: result.id,
-      appointmentNumber: result.appointmentNumber,
-      appointment: result,
-    });
-  } catch (error: any) {
+    return NextResponse.json(
+      {
+        success: true,
+        appointmentId: result.id,
+        appointmentNumber: result.appointmentNumber,
+        appointment: result,
+      },
+      { status: 201 }
+    );
+  } catch (error: unknown) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: error.issues[0]?.message || "Please check your booking details." },
+        { status: 400 }
+      );
+    }
+
+    if (error instanceof BookingRequestError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     console.error("Booking Creation Error:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to complete appointment booking." },
-      { status: 400 }
+      { error: "We could not complete your booking. Please try again." },
+      { status: 500 }
     );
   }
 }

@@ -4,13 +4,16 @@ import React from "react";
 import Link from "next/link";
 import { Menu, ExternalLink, Calendar as CalendarIcon, User } from "lucide-react";
 import { Button } from "../ui/Button";
+import type { SessionUser } from "@/lib/auth";
 
 export const AdminHeader = ({
   onToggleMobile,
   title,
+  session,
 }: {
   onToggleMobile: () => void;
   title?: string;
+  session: SessionUser;
 }) => {
   const todayStr = new Date().toLocaleDateString("en-IN", {
     weekday: "short",
@@ -56,8 +59,10 @@ export const AdminHeader = ({
             <User className="w-4 h-4" />
           </div>
           <div className="hidden md:block text-left">
-            <p className="text-xs font-bold text-white leading-tight">Sachin Mahaley</p>
-            <p className="text-[10px] text-[#D4AF37] leading-tight">Master Admin</p>
+            <p className="text-xs font-bold text-white leading-tight">{session.name}</p>
+            <p className="text-[10px] text-[#D4AF37] leading-tight">
+              {session.role === "ADMIN" ? "Master Admin" : session.role}
+            </p>
           </div>
         </div>
       </div>

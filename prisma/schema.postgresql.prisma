@@ -51,7 +51,7 @@ model BusinessHours {
   dayName    String
   isOpen     Boolean  @default(true)
   openTime   String   @default("09:00") // HH:mm
-  closeTime  String   @default("21:00") // HH:mm
+  closeTime  String   @default("22:00") // HH:mm
   hasBreak   Boolean  @default(false)
   breakStart String?  @default("13:30")
   breakEnd   String?  @default("14:30")
@@ -97,7 +97,7 @@ model StaffAvailability {
   dayOfWeek Int      // 0-6
   isWorking Boolean  @default(true)
   startTime String   @default("09:00")
-  endTime   String   @default("21:00")
+  endTime   String   @default("22:00")
 
   @@unique([staffId, dayOfWeek])
 }

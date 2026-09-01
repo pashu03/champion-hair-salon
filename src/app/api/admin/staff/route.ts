@@ -4,6 +4,11 @@ import { getAdminSession } from "@/lib/auth";
 import { staffSchema } from "@/lib/validations";
 
 export async function GET() {
+  const session = await getAdminSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const staff = await prisma.staff.findMany({
       include: {
@@ -51,7 +56,7 @@ export async function POST(req: Request) {
           dayOfWeek: d,
           isWorking: true,
           startTime: "09:00",
-          endTime: "21:00",
+          endTime: "22:00",
         },
       });
     }

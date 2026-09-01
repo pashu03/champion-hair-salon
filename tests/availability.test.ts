@@ -3,12 +3,19 @@ import {
   timeToMinutes,
   minutesToTime,
   isOverlapping,
+  addDaysToDateString,
+  getSalonDateTime,
+  isValidDateString,
 } from "../src/lib/availability";
 import { generateAppointmentNumber } from "../src/lib/booking-id";
 import {
   createWhatsAppUrl,
   generateBookingVoucherMessage,
 } from "../src/lib/whatsapp";
+import {
+  formatTime12Hour,
+  formatTimeRange12Hour,
+} from "../src/lib/time-format";
 
 describe("Availability & Time Calculation Utilities", () => {
   it("converts HH:mm time string to minutes correctly", () => {
@@ -39,6 +46,29 @@ describe("Availability & Time Calculation Utilities", () => {
     expect(isOverlapping(540, 600, 555, 585)).toBe(true);
   });
 
+  it("uses the salon timezone instead of the server timezone", () => {
+    expect(getSalonDateTime(new Date("2026-08-31T19:15:00.000Z"))).toEqual({
+      date: "2026-09-01",
+      minutesFromMidnight: 45,
+    });
+  });
+
+  it("validates and advances calendar date strings without timezone rollover", () => {
+    expect(isValidDateString("2026-09-01")).toBe(true);
+    expect(isValidDateString("2026-02-29")).toBe(false);
+    expect(isValidDateString("2026-13-01")).toBe(false);
+    expect(addDaysToDateString("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("formats booking times as 12-hour times with AM and PM", () => {
+    expect(formatTime12Hour("09:00")).toBe("9:00 AM");
+    expect(formatTime12Hour("12:00")).toBe("12:00 PM");
+    expect(formatTime12Hour("15:30")).toBe("3:30 PM");
+    expect(formatTimeRange12Hour("21:30", "22:00")).toBe(
+      "9:30 PM – 10:00 PM"
+    );
+  });
+
   it("generates structured appointment numbers with year prefix", () => {
     const currentYear = new Date().getFullYear();
     const apptNum = generateAppointmentNumber();
@@ -63,6 +93,7 @@ describe("Availability & Time Calculation Utilities", () => {
     expect(voucher).toContain("Rahul Sharma");
     expect(voucher).toContain("Hair Cut");
     expect(voucher).toContain("Sachin Mahaley");
+    expect(voucher).toContain("11:00 AM");
     expect(voucher).toContain("₹120");
     expect(voucher).toContain("Please trim sides short");
   });

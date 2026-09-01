@@ -4,6 +4,11 @@ import { getAdminSession } from "@/lib/auth";
 import { serviceSchema } from "@/lib/validations";
 
 export async function GET() {
+  const session = await getAdminSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const services = await prisma.service.findMany({
       orderBy: [{ displayOrder: "asc" }, { name: "asc" }],

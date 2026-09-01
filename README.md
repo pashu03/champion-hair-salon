@@ -162,4 +162,4 @@ Never commit production database, JWT, or admin secrets.
 - **Founder:** Sachin Mahaley
 - **Phone / WhatsApp:** +91 8888857057 / +91 9158846787
 - **Email:** info@championhairsalon.com
-- **Hours:** Monday – Sunday (09:00 AM – 09:00 PM)
+- **Hours:** Monday – Sunday (9:00 AM – 10:00 PM)

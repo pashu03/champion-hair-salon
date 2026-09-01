@@ -2,6 +2,8 @@
  * WhatsApp integration helpers for Champion Hair Salon
  */
 
+import { formatTime12Hour } from "./time-format";
+
 const DEFAULT_SALON_WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "918888857057";
 
 export interface BookingDetailsForWhatsApp {
@@ -39,7 +41,7 @@ export function generateBookingVoucherMessage(booking: BookingDetailsForWhatsApp
     `✂️ *Service:* ${booking.serviceName}`,
     `🧔 *Barber:* ${booking.barberName || "Any Master Barber"}`,
     `📅 *Date:* ${booking.date}`,
-    `⏰ *Time Slot:* ${booking.time} (${booking.duration} mins)`,
+    `⏰ *Time Slot:* ${formatTime12Hour(booking.time)} (${booking.duration} mins)`,
     `💰 *Estimated Total:* ₹${booking.price}`,
   ];
 

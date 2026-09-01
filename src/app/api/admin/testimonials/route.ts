@@ -4,6 +4,11 @@ import { getAdminSession } from "@/lib/auth";
 import { testimonialSchema } from "@/lib/validations";
 
 export async function GET() {
+  const session = await getAdminSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const testimonials = await prisma.testimonial.findMany({
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],

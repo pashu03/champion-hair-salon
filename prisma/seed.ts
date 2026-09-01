@@ -70,13 +70,13 @@ async function main() {
 
   // 3. Business Hours (Monday to Sunday)
   const days = [
-    { dayOfWeek: 0, dayName: "Sunday", isOpen: true, openTime: "09:00", closeTime: "21:00" },
-    { dayOfWeek: 1, dayName: "Monday", isOpen: true, openTime: "09:00", closeTime: "21:00" },
-    { dayOfWeek: 2, dayName: "Tuesday", isOpen: true, openTime: "09:00", closeTime: "21:00" },
-    { dayOfWeek: 3, dayName: "Wednesday", isOpen: true, openTime: "09:00", closeTime: "21:00" },
-    { dayOfWeek: 4, dayName: "Thursday", isOpen: true, openTime: "09:00", closeTime: "21:00" },
-    { dayOfWeek: 5, dayName: "Friday", isOpen: true, openTime: "09:00", closeTime: "21:00" },
-    { dayOfWeek: 6, dayName: "Saturday", isOpen: true, openTime: "09:00", closeTime: "21:00" },
+    { dayOfWeek: 0, dayName: "Sunday", isOpen: true, openTime: "09:00", closeTime: "22:00" },
+    { dayOfWeek: 1, dayName: "Monday", isOpen: true, openTime: "09:00", closeTime: "22:00" },
+    { dayOfWeek: 2, dayName: "Tuesday", isOpen: true, openTime: "09:00", closeTime: "22:00" },
+    { dayOfWeek: 3, dayName: "Wednesday", isOpen: true, openTime: "09:00", closeTime: "22:00" },
+    { dayOfWeek: 4, dayName: "Thursday", isOpen: true, openTime: "09:00", closeTime: "22:00" },
+    { dayOfWeek: 5, dayName: "Friday", isOpen: true, openTime: "09:00", closeTime: "22:00" },
+    { dayOfWeek: 6, dayName: "Saturday", isOpen: true, openTime: "09:00", closeTime: "22:00" },
   ];
 
   for (const day of days) {
@@ -86,7 +86,7 @@ async function main() {
       create: day,
     });
   }
-  console.log("✓ Business hours initialized (Mon - Sun, 09:00 - 21:00)");
+  console.log("✓ Business hours initialized (Mon - Sun, 09:00 - 22:00)");
 
   // 4. Staff / Barbers
   const sachin = await prisma.staff.upsert({
@@ -143,14 +143,14 @@ async function main() {
   for (let d = 0; d <= 6; d++) {
     await prisma.staffAvailability.upsert({
       where: { staffId_dayOfWeek: { staffId: sachin.id, dayOfWeek: d } },
-      update: { isWorking: true, startTime: "09:00", endTime: "21:00" },
-      create: { staffId: sachin.id, dayOfWeek: d, isWorking: true, startTime: "09:00", endTime: "21:00" },
+      update: { isWorking: true, startTime: "09:00", endTime: "22:00" },
+      create: { staffId: sachin.id, dayOfWeek: d, isWorking: true, startTime: "09:00", endTime: "22:00" },
     });
 
     await prisma.staffAvailability.upsert({
       where: { staffId_dayOfWeek: { staffId: seniorBarber.id, dayOfWeek: d } },
-      update: { isWorking: true, startTime: "09:00", endTime: "21:00" },
-      create: { staffId: seniorBarber.id, dayOfWeek: d, isWorking: true, startTime: "09:00", endTime: "21:00" },
+      update: { isWorking: true, startTime: "09:00", endTime: "22:00" },
+      create: { staffId: seniorBarber.id, dayOfWeek: d, isWorking: true, startTime: "09:00", endTime: "22:00" },
     });
   }
   console.log("✓ Barbers and weekly shifts configured");

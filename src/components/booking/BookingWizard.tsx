@@ -14,13 +14,14 @@ import {
   Sparkles,
   AlertCircle,
   Phone,
-  Shield,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { Input, Textarea } from "../ui/Input";
+import { formatTime12Hour } from "@/lib/time-format";
 
 export interface ServiceItem {
   id: string;
@@ -44,6 +45,13 @@ interface AvailableSlot {
   time: string;
   endTime: string;
   availableBarbers: { id: string; name: string }[];
+}
+
+interface BookingDate {
+  dateStr: string;
+  dayName: string;
+  dayNum: number;
+  monthName: string;
 }
 
 export const BookingWizard = ({
@@ -78,40 +86,53 @@ export const BookingWizard = ({
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [slotReason, setSlotReason] = useState<string | null>(null);
+  const [slotLoadFailed, setSlotLoadFailed] = useState(false);
+  const [availabilityRequest, setAvailabilityRequest] = useState(0);
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Generate next 14 bookable days
-  const [datesList, setDatesList] = useState<{ dateStr: string; dayName: string; dayNum: number; monthName: string }[]>([]);
+  const [datesList, setDatesList] = useState<BookingDate[]>([]);
 
   useEffect(() => {
-    const dates = [];
-    const today = new Date();
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    let active = true;
 
-    for (let i = 0; i < 14; i++) {
-      const d = new Date();
-      d.setDate(today.getDate() + i);
-      const year = d.getFullYear();
-      const month = (d.getMonth() + 1).toString().padStart(2, "0");
-      const day = d.getDate().toString().padStart(2, "0");
-      const dateStr = `${year}-${month}-${day}`;
+    const initializeDates = async () => {
+      // Run after hydration so the visitor's local calendar date is used.
+      await Promise.resolve();
+      if (!active) return;
 
-      dates.push({
-        dateStr,
-        dayName: i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayNames[d.getDay()],
-        dayNum: d.getDate(),
-        monthName: monthNames[d.getMonth()],
-      });
-    }
+      const dates: BookingDate[] = [];
+      const today = new Date();
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    setDatesList(dates);
-    if (!selectedDate && dates[0]) {
-      setSelectedDate(dates[0].dateStr);
-    }
+      for (let i = 0; i < 14; i++) {
+        const d = new Date();
+        d.setDate(today.getDate() + i);
+        const year = d.getFullYear();
+        const month = (d.getMonth() + 1).toString().padStart(2, "0");
+        const day = d.getDate().toString().padStart(2, "0");
+
+        dates.push({
+          dateStr: `${year}-${month}-${day}`,
+          dayName: i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayNames[d.getDay()],
+          dayNum: d.getDate(),
+          monthName: monthNames[d.getMonth()],
+        });
+      }
+
+      setDatesList(dates);
+      setSelectedDate((currentDate) => currentDate || dates[0]?.dateStr || "");
+    };
+
+    void initializeDates();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const selectedService = services.find((s) => s.id === selectedServiceId);
@@ -121,11 +142,7 @@ export const BookingWizard = ({
   useEffect(() => {
     if (!selectedDate || !selectedService) return;
 
-    let isMounted = true;
-    setIsLoadingSlots(true);
-    setSlotReason(null);
-    setSelectedTime(""); // Reset chosen time on date change
-
+    const controller = new AbortController();
     const params = new URLSearchParams({
       date: selectedDate,
       duration: selectedService.duration.toString(),
@@ -135,33 +152,65 @@ export const BookingWizard = ({
       params.set("staffId", selectedStaffId);
     }
 
-    fetch(`/api/booking/availability?${params.toString()}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!isMounted) return;
+    const loadAvailability = async () => {
+      try {
+        await Promise.resolve();
+        if (controller.signal.aborted) return;
+        setIsLoadingSlots(true);
+        setSlotReason(null);
+        setSlotLoadFailed(false);
+        setSelectedTime("");
+
+        const response = await fetch(
+          `/api/booking/availability?${params.toString()}`,
+          { cache: "no-store", signal: controller.signal }
+        );
+        const data = (await response.json().catch(() => null)) as {
+          isOpen?: boolean;
+          slots?: AvailableSlot[];
+          reason?: string;
+          error?: string;
+        } | null;
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to check live availability.");
+        }
+        if (!data || typeof data.isOpen !== "boolean" || !Array.isArray(data.slots)) {
+          throw new Error("The availability service returned an invalid response.");
+        }
+
         if (data.isOpen) {
-          setAvailableSlots(data.slots || []);
-          if (data.slots && data.slots.length === 0) {
-            setSlotReason("All slots for this date are currently booked. Please select another date.");
+          setAvailableSlots(data.slots);
+          if (data.slots.length === 0) {
+            setSlotReason(
+              "No more slots are available for this date. Please select another date."
+            );
           }
         } else {
           setAvailableSlots([]);
           setSlotReason(data.reason || "Salon is closed on this date.");
         }
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        console.error("Failed to load slots:", err);
-        setSlotReason("Unable to check live availability. Please check your connection.");
-      })
-      .finally(() => {
-        if (isMounted) setIsLoadingSlots(false);
-      });
+      } catch (error: unknown) {
+        if (controller.signal.aborted) return;
+        console.error("Failed to load slots:", error);
+        setAvailableSlots([]);
+        setSlotLoadFailed(true);
+        setSlotReason(
+          error instanceof Error
+            ? error.message
+            : "Unable to check live availability. Please try again."
+        );
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingSlots(false);
+      }
+    };
+
+    void loadAvailability();
 
     return () => {
-      isMounted = false;
+      controller.abort();
     };
-  }, [selectedDate, selectedServiceId, selectedStaffId]);
+  }, [selectedDate, selectedService, selectedStaffId, availabilityRequest]);
 
   // Service categories for filtering in Step 1
   const categories = [
@@ -207,15 +256,23 @@ export const BookingWizard = ({
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(data.error || "Booking failed. Please try again.");
+        throw new Error(data?.error || "Booking failed. Please try again.");
+      }
+
+      if (!data?.appointmentId) {
+        throw new Error("Booking succeeded but no confirmation number was returned.");
       }
 
       // Successful redirect to confirmation voucher
       router.push(`/booking/confirmation/${data.appointmentId}`);
-    } catch (err: any) {
-      setSubmitError(err.message || "An error occurred while confirming your appointment.");
+    } catch (err: unknown) {
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while confirming your appointment."
+      );
       setIsSubmitting(false);
     }
   };
@@ -520,7 +577,7 @@ export const BookingWizard = ({
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#B5B5B5]">
                 Available Time Slots
               </label>
-              <span className="text-xs text-[#8E8E8E]">Salon Hours: 09:00 AM – 09:00 PM</span>
+              <span className="text-xs text-[#8E8E8E]">Salon Hours: 9:00 AM – 10:00 PM</span>
             </div>
 
             {isLoadingSlots ? (
@@ -544,9 +601,9 @@ export const BookingWizard = ({
                           : "bg-[#161616] text-white hover:bg-[#222222] border border-white/10 hover:border-[#D4AF37]/50"
                       }`}
                     >
-                      <span>{slot.time}</span>
+                      <span>{formatTime12Hour(slot.time)}</span>
                       <span className="text-[10px] text-opacity-80 font-normal">
-                        to {slot.endTime}
+                        to {formatTime12Hour(slot.endTime)}
                       </span>
                     </button>
                   );
@@ -556,7 +613,20 @@ export const BookingWizard = ({
               <div className="py-10 text-center bg-[#141414] rounded-xl border border-white/5 p-6 space-y-2">
                 <AlertCircle className="w-8 h-8 text-[#D4AF37] mx-auto" />
                 <p className="text-sm font-medium text-white">{slotReason || "No slots available for this date."}</p>
-                <p className="text-xs text-[#8E8E8E]">Please pick another date from the calendar row above.</p>
+                {slotLoadFailed ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                    onClick={() => setAvailabilityRequest((request) => request + 1)}
+                  >
+                    Try Again
+                  </Button>
+                ) : (
+                  <p className="text-xs text-[#8E8E8E]">Please pick another date from the calendar row above.</p>
+                )}
               </div>
             )}
           </div>
@@ -619,7 +689,9 @@ export const BookingWizard = ({
               </div>
               <div>
                 <span className="text-xs text-[#8E8E8E] uppercase tracking-wider block">Date & Time</span>
-                <span className="font-bold text-white">{selectedDate} @ {selectedTime}</span>
+                <span className="font-bold text-white">
+                  {selectedDate} @ {formatTime12Hour(selectedTime)}
+                </span>
               </div>
               <div>
                 <span className="text-xs text-[#8E8E8E] uppercase tracking-wider block">Total Amount</span>

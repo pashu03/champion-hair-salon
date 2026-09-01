@@ -25,6 +25,7 @@ export function MotionSystem({ children }: { children: React.ReactNode }) {
       if (cancelled || !root) return;
 
       gsap.registerPlugin(ScrollTrigger);
+      let interactiveModelCleanup = () => {};
       const context = gsap.context(() => {
         gsap.fromTo(
           root,
@@ -39,6 +40,89 @@ export function MotionSystem({ children }: { children: React.ReactNode }) {
             { autoAlpha: 0, y: 22 },
             { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.08, ease: "power3.out", delay: 0.08 }
           );
+        }
+
+        const modelStage = root.querySelector<HTMLElement>("[data-hero-model-stage]");
+        const modelScroll = root.querySelector<HTMLElement>("[data-hero-model-scroll]");
+        const modelTilt = root.querySelector<HTMLElement>("[data-hero-model-tilt]");
+        const modelShadow = root.querySelector<HTMLElement>("[data-hero-model-shadow]");
+
+        if (modelStage && modelScroll && modelTilt) {
+          gsap.set(modelStage, { perspective: 1050 });
+          gsap.set([modelScroll, modelTilt], {
+            transformStyle: "preserve-3d",
+            transformOrigin: "50% 58%",
+          });
+
+          gsap.fromTo(
+            modelScroll,
+            { y: 20, rotationX: 2.5, scale: 0.965 },
+            {
+              y: -34,
+              rotationX: -3.5,
+              scale: 1.025,
+              ease: "none",
+              scrollTrigger: {
+                trigger: modelStage,
+                start: "top 88%",
+                end: "bottom 12%",
+                scrub: 0.85,
+              },
+            }
+          );
+
+          if (modelShadow) {
+            gsap.fromTo(
+              modelShadow,
+              { scaleX: 1, opacity: 0.48 },
+              {
+                scaleX: 0.76,
+                opacity: 0.24,
+                ease: "none",
+                scrollTrigger: {
+                  trigger: modelStage,
+                  start: "top 88%",
+                  end: "bottom 12%",
+                  scrub: 0.85,
+                },
+              }
+            );
+          }
+
+          if (window.matchMedia("(pointer: fine)").matches) {
+            const handlePointerMove = (event: PointerEvent) => {
+              const rect = modelStage.getBoundingClientRect();
+              const x = (event.clientX - rect.left) / rect.width - 0.5;
+              const y = (event.clientY - rect.top) / rect.height - 0.5;
+              gsap.to(modelTilt, {
+                rotationY: x * 8,
+                rotationX: y * -5,
+                x: x * 8,
+                y: y * 5,
+                duration: 0.65,
+                ease: "power2.out",
+                overwrite: "auto",
+              });
+            };
+            const handlePointerLeave = () => {
+              gsap.to(modelTilt, {
+                rotationY: 0,
+                rotationX: 0,
+                x: 0,
+                y: 0,
+                duration: 0.8,
+                ease: "power3.out",
+                overwrite: "auto",
+              });
+            };
+
+            modelStage.addEventListener("pointermove", handlePointerMove);
+            modelStage.addEventListener("pointerleave", handlePointerLeave);
+            interactiveModelCleanup = () => {
+              modelStage.removeEventListener("pointermove", handlePointerMove);
+              modelStage.removeEventListener("pointerleave", handlePointerLeave);
+            };
+          }
         }
 
         root.querySelectorAll<HTMLElement>("[data-reveal]").forEach((element) => {
@@ -105,6 +189,7 @@ export function MotionSystem({ children }: { children: React.ReactNode }) {
       window.addEventListener("load", refresh, { once: true });
       cleanup = () => {
         window.removeEventListener("load", refresh);
+        interactiveModelCleanup();
         context.revert();
       };
     }

@@ -154,7 +154,7 @@ export const StaffManagerClient = () => {
 
               <div className="pt-4 mt-4 border-t border-white/5 flex items-center justify-between">
                 <span className="text-xs text-[#8E8E8E]">
-                  Shift: Mon – Sun (09:00 AM – 09:00 PM)
+                  Shift: Mon – Sun (9:00 AM – 10:00 PM)
                 </span>
 
                 <Button

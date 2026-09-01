@@ -85,7 +85,7 @@ export const Footer = () => {
                 <Clock className="w-4 h-4 text-[#D4AF37] mt-0.5 shrink-0" />
                 <div>
                   <p className="text-white font-medium">Monday – Sunday</p>
-                  <p className="text-[#8E8E8E]">09:00 AM – 09:00 PM</p>
+                  <p className="text-[#8E8E8E]">9:00 AM – 10:00 PM</p>
                   <p className="text-xs text-[#D4AF37] mt-1 font-sans">Open All 7 Days</p>
                 </div>
               </div>

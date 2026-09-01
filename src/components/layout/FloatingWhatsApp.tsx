@@ -14,9 +14,9 @@ export const FloatingWhatsApp = () => {
   return (
     <aside
       aria-label="Contact options"
-      className="hidden md:flex fixed bottom-6 right-6 z-40 items-center group"
+      className="pointer-events-none fixed bottom-24 right-4 z-40 hidden md:block md:right-6 group"
     >
-      <div className="always-dark mr-3 px-3.5 py-1.5 rounded-full bg-[#161616] text-[#FFFFFF] text-xs font-medium border border-white/10 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap">
+      <div className="always-dark pointer-events-none absolute bottom-[calc(100%+0.75rem)] right-0 hidden whitespace-nowrap rounded-full border border-white/10 bg-[#161616] px-3.5 py-1.5 text-xs font-medium text-[#FFFFFF] opacity-0 shadow-xl transition-all duration-300 translate-y-1 group-hover:translate-y-0 group-hover:opacity-100 lg:block">
         Chat with Sachin Mahaley & Team
       </div>
 
@@ -24,7 +24,7 @@ export const FloatingWhatsApp = () => {
         href="https://wa.me/918888857057?text=Hi%20Champion%20Hair%20Salon%2C%20I%20would%20like%20to%20book%20an%20appointment."
         target="_blank"
         rel="noopener noreferrer"
-        className="w-13 h-13 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shadow-[0_4px_20px_rgba(37,211,102,0.4)] hover:scale-110 active:scale-95 transition-all duration-300 relative focus:outline-none focus:ring-4 focus:ring-[#25D366]/40"
+        className="pointer-events-auto relative flex h-13 w-13 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_4px_20px_rgba(37,211,102,0.4)] transition-all duration-300 hover:scale-110 hover:bg-[#20bd5a] active:scale-95 focus:outline-none focus:ring-4 focus:ring-[#25D366]/40"
         aria-label="Chat on WhatsApp (+91 8888857057)"
       >
         <MessageSquare className="w-7 h-7 fill-current" />

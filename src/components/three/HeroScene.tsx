@@ -1,109 +1,75 @@
-"use client";
-
-import React, { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import Image from "next/image";
-import { Scissors, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
-const BarberToolScene = dynamic(
-  () => import("./BarberToolScene").then((module) => module.BarberToolScene),
-  { ssr: false, loading: () => <HeroSceneFallback loading /> }
-);
-
-type SceneMode = "checking" | "3d" | "fallback";
-
-interface NavigatorWithPerformanceHints extends Navigator {
-  deviceMemory?: number;
-  connection?: { saveData?: boolean };
-}
-
-function canUseWebGL() {
-  try {
-    const canvas = document.createElement("canvas");
-    return Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl"));
-  } catch {
-    return false;
-  }
-}
-
-function shouldUse3D() {
-  const nav = navigator as NavigatorWithPerformanceHints;
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const compactViewport = window.matchMedia("(max-width: 640px)").matches;
-  const lowMemory = typeof nav.deviceMemory === "number" && nav.deviceMemory < 4;
-  const lowCpu = typeof nav.hardwareConcurrency === "number" && nav.hardwareConcurrency < 6;
-  const saveData = Boolean(nav.connection?.saveData);
-
-  return canUseWebGL() && !reducedMotion && !saveData && !(compactViewport && (lowMemory || lowCpu));
-}
-
-class SceneBoundary extends React.Component<
-  { children: React.ReactNode },
-  { failed: boolean }
-> {
-  state = { failed: false };
-
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-
-  render() {
-    return this.state.failed ? <HeroSceneFallback /> : this.props.children;
-  }
-}
-
-export function HeroSceneFallback({ loading = false }: { loading?: boolean }) {
+function BarberStationArtwork() {
   return (
-    <div className="hero-static-fallback absolute inset-0 flex items-center justify-center" role="img" aria-label="Premium black and gold barber scissors">
-      <div className="hero-tool-halo" />
-      <div className="hero-tool-orbit hero-tool-orbit-one" />
-      <div className="hero-tool-orbit hero-tool-orbit-two" />
-      <Scissors className="hero-tool-icon h-40 w-40 sm:h-52 sm:w-52" strokeWidth={0.8} />
-      <span className="absolute bottom-24 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.28em] text-[#D4AF37]">
-        <Sparkles className="h-3.5 w-3.5" />
-        {loading ? "Preparing the craft" : "Crafted since 1998"}
-      </span>
+    <div
+      className="hero-station-stage absolute inset-x-0 bottom-[9.4rem] top-0 z-[1] flex items-center justify-center sm:bottom-[11rem]"
+      role="img"
+      aria-label="Luxury black and gold barber chair, mirror, clippers, comb, scissors and razor"
+      data-hero-model-stage
+    >
+      <div className="hero-station-glow" aria-hidden="true" />
+
+      <div className="hero-station-art relative h-full w-full" data-hero-model-scroll>
+        <div className="hero-station-model relative h-full w-full" data-hero-model-tilt>
+          <div className="hero-station-model-shadow" data-hero-model-shadow aria-hidden="true" />
+          <Image
+            src="/images/barber-station-hero-v2.png"
+            alt="Premium Champion Hair Salon barber station"
+            fill
+            priority
+            loading="eager"
+            className="z-[2] object-contain object-center"
+            sizes="(min-width: 1024px) 40vw, (min-width: 640px) 70vw, 94vw"
+          />
+        </div>
+      </div>
     </div>
   );
 }
 
 export function HeroScene() {
-  const [mode, setMode] = useState<SceneMode>("checking");
-
-  useEffect(() => {
-    const start = () => setMode(shouldUse3D() ? "3d" : "fallback");
-    const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-
-    if (idleWindow.requestIdleCallback) {
-      const id = idleWindow.requestIdleCallback(start, { timeout: 900 });
-      return () => idleWindow.cancelIdleCallback?.(id);
-    }
-
-    const id = window.setTimeout(start, 180);
-    return () => window.clearTimeout(id);
-  }, []);
-
   return (
-    <div className="relative h-full min-h-[430px] w-full overflow-hidden rounded-[1.5rem]">
-      {mode === "3d" ? (
-        <SceneBoundary>
-          <BarberToolScene />
-        </SceneBoundary>
-      ) : (
-        <HeroSceneFallback loading={mode === "checking"} />
-      )}
+    <div className="relative h-full min-h-[520px] w-full overflow-hidden rounded-[1.5rem] lg:min-h-[590px]">
+      <BarberStationArtwork />
 
-      <div className="always-dark pointer-events-none absolute inset-x-4 bottom-4 z-10 flex items-center gap-3 rounded-xl border border-white/10 bg-black/65 p-3 text-white shadow-2xl backdrop-blur-md sm:inset-x-6 sm:bottom-6">
-        <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg border border-[#D4AF37]/35">
-          <Image src="/images/salon-storefront.jpg" alt="Champion Hair Salon storefront" fill priority loading="eager" className="object-cover" sizes="64px" />
+      <div className="hero-station-caption pointer-events-none absolute inset-x-4 bottom-[8.25rem] z-10 flex items-center justify-center gap-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#D4AF37] sm:bottom-[9.75rem] sm:text-[10px]">
+        <span>Champion signature craft</span>
+        <span className="h-1 w-1 rounded-full bg-current shadow-[0_0_8px_currentColor]" />
+        <span>Since 1998</span>
+      </div>
+
+      <div className="always-dark absolute inset-x-4 bottom-4 z-20 flex items-center gap-3 rounded-[1.15rem] border border-white/10 bg-[#101010]/95 p-3 text-white shadow-2xl backdrop-blur-md sm:inset-x-6 sm:bottom-6 sm:p-4">
+        <div className="relative h-14 w-[4.5rem] shrink-0 overflow-hidden rounded-xl border border-[#D4AF37]/55 sm:h-16 sm:w-20">
+          <Image
+            src="/images/salon-storefront.jpg"
+            alt="Champion Hair Salon storefront"
+            fill
+            priority
+            loading="eager"
+            className="object-cover"
+            sizes="80px"
+          />
         </div>
-        <div className="min-w-0">
-          <p className="truncate font-display text-sm font-semibold text-white">The craft. The chair. The legacy.</p>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#D4AF37]">Real salon • Main Market</p>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-display text-sm font-semibold text-white sm:text-base">
+            The craft. The chair. The legacy.
+          </p>
+          <p className="mt-0.5 truncate text-[9px] uppercase tracking-[0.18em] text-[#D4AF37] sm:text-[10px]">
+            Real salon • Main Market
+          </p>
         </div>
+
+        <Link
+          href="/about"
+          aria-label="Discover the Champion Hair Salon legacy"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#D4AF37]/70 text-[#D4AF37] transition-all hover:border-[#F5E296] hover:bg-[#D4AF37] hover:text-black focus-visible:outline-none sm:h-12 sm:w-12"
+        >
+          <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
+        </Link>
       </div>
     </div>
   );
