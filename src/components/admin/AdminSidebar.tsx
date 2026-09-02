@@ -4,21 +4,22 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Scissors,
-  LayoutDashboard,
-  CalendarDays,
   Calendar,
-  Layers,
-  Users,
-  Image as ImageIcon,
-  Star,
-  MessageSquare,
+  CalendarDays,
   Clock,
-  UserCheck,
-  Settings,
   Database,
-  LogOut,
   ExternalLink,
+  Image as ImageIcon,
+  Layers,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  Scissors,
+  Settings,
+  Star,
+  UserCheck,
+  Users,
+  X,
 } from "lucide-react";
 
 const ADMIN_NAV = [
@@ -51,92 +52,111 @@ export const AdminSidebar = ({
       await fetch("/api/auth/logout", { method: "POST" });
       router.push("/admin/login");
       router.refresh();
-    } catch (err) {
-      console.error("Logout failed", err);
+    } catch (error) {
+      console.error("Logout failed", error);
     }
   };
 
   return (
     <>
-      {/* Mobile backdrop */}
       {isMobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 lg:hidden"
+        <button
+          type="button"
+          aria-label="Close navigation"
+          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm lg:hidden"
           onClick={onCloseMobile}
         />
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-[#0D0D0D] border-r border-white/10 flex flex-col justify-between transition-transform duration-300 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-white/[0.08] bg-[#0E1218]/98 shadow-[18px_0_45px_rgba(0,0,0,0.2)] transition-transform duration-300 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* Brand Header */}
-        <div>
-          <div className="p-5 border-b border-white/10 flex items-center justify-between">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex h-20 shrink-0 items-center justify-between border-b border-white/[0.08] px-5">
             <Link href="/admin/dashboard" className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#1A1A1A] border border-[#D4AF37]/40 flex items-center justify-center text-[#D4AF37]">
-                <Scissors className="w-4 h-4 -rotate-45" />
-              </div>
-              <div>
-                <span className="font-display text-base font-bold text-white tracking-wider block">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#D4AF37]/40 bg-gradient-to-br from-[#2A2415] to-[#17150F] text-[#E3BD48] shadow-[0_0_24px_rgba(212,175,55,0.1)]">
+                <Scissors className="h-[18px] w-[18px] -rotate-45" />
+              </span>
+              <span>
+                <span className="block font-display text-[17px] font-bold leading-none tracking-[0.08em] text-white">
                   CHAMPION
                 </span>
-                <span className="text-[10px] text-[#D4AF37] uppercase font-bold tracking-widest block">
-                  ADMIN PORTAL • 1998
+                <span className="mt-1.5 block text-[9px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">
+                  Admin Portal · 1998
                 </span>
-              </div>
+              </span>
             </Link>
+
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="rounded-lg p-2 text-[#AAB0BA] transition-colors hover:bg-white/[0.06] hover:text-white lg:hidden"
+              aria-label="Close navigation"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-160px)]">
-            {ADMIN_NAV.map((item) => {
-              const isActive =
-                item.href === "/admin/dashboard"
-                  ? pathname === "/admin/dashboard"
-                  : pathname.startsWith(item.href);
+          <nav className="admin-scrollbar flex-1 overflow-y-auto p-4">
+            <p className="px-3 pb-3 text-[9px] font-bold uppercase tracking-[0.22em] text-[#6F7783]">
+              Salon management
+            </p>
+            <div className="space-y-1">
+              {ADMIN_NAV.map((item) => {
+                const isActive =
+                  item.href === "/admin/dashboard"
+                    ? pathname === "/admin/dashboard"
+                    : pathname.startsWith(item.href);
+                const Icon = item.icon;
 
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={onCloseMobile}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
-                    isActive
-                      ? "bg-[#D4AF37] text-black font-bold shadow-sm"
-                      : "text-[#A0A0A0] hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-black" : "text-[#D4AF37]"}`} />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={onCloseMobile}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`relative flex items-center gap-3 rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition-all ${
+                      isActive
+                        ? "border-[#D4AF37]/20 bg-[#D4AF37]/14 text-[#F4D572] shadow-[inset_3px_0_0_#D4AF37]"
+                        : "border-transparent text-[#AEB4BD] hover:border-white/[0.06] hover:bg-white/[0.05] hover:text-white"
+                    }`}
+                  >
+                    <Icon
+                      className={`h-[18px] w-[18px] ${
+                        isActive ? "text-[#E1B83F]" : "text-[#8F98A5]"
+                      }`}
+                    />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </nav>
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-4 border-t border-white/10 space-y-2 bg-[#0A0A0A]">
+        <div className="shrink-0 space-y-2 border-t border-white/[0.08] bg-[#0A0E14] p-4">
           <Link
             href="/"
             target="_blank"
-            className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
+            className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-medium text-[#B5BBC4] transition-colors hover:bg-white/[0.05] hover:text-white"
           >
             <span className="flex items-center gap-2">
-              <ExternalLink className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <ExternalLink className="h-3.5 w-3.5 text-[#D4AF37]" />
               View Public Website
             </span>
-            <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white">Live</span>
+            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[9px] uppercase tracking-wider text-emerald-300">
+              Live
+            </span>
           </Link>
 
           <button
+            type="button"
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 transition-colors cursor-pointer"
+            className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-rose-300 transition-colors hover:bg-rose-500/10 hover:text-rose-200"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <LogOut className="h-3.5 w-3.5" />
             <span>Sign Out</span>
           </button>
         </div>

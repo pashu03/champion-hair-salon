@@ -11,6 +11,7 @@
     "test": "vitest run",
     "db:push": "prisma db push",
     "db:seed": "prisma generate && tsx prisma/seed.ts",
+    "admin:sync": "node ./scripts/sync-admin.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {

@@ -113,8 +113,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - **Admin Email:** the `ADMIN_EMAIL` used when seeding
 - **Password:** the `ADMIN_PASSWORD` used when seeding
 
-The credentials come from the environment used to seed each database. Vercel
-requires `ADMIN_PASSWORD`, and the login page never displays or pre-fills it.
+The credentials come from the environment used to initialize each database.
+Only the seed/admin-sync commands read `ADMIN_PASSWORD`; the login API verifies
+the bcrypt hash stored in PostgreSQL. The login page never displays or pre-fills
+the password.
+
+Changing `ADMIN_EMAIL` or `ADMIN_PASSWORD` does not automatically update the
+database. Synchronize only the admin account without changing salon data:
+
+```bash
+npm run admin:sync
+```
 
 ---
 
@@ -145,6 +154,10 @@ inside a password must be written as `%40`.
 If the database still needs the initial salon data or admin user, run
 `npm run db:seed` once from a trusted terminal with `DATABASE_URL`,
 `ADMIN_EMAIL`, and `ADMIN_PASSWORD` set.
+
+If the salon data already exists and only the login is missing or the password
+changed, use `npm run admin:sync` instead. Run it against the same
+`DATABASE_URL` configured in Vercel.
 
 Never commit production database, JWT, or admin secrets.
 

@@ -69,27 +69,58 @@ footer {
   transition: background-color 320ms ease, border-color 320ms ease, color 320ms ease;
 }
 
-/* Existing surfaces are mapped into a deliberately warm light palette. */
-html.light [class~="bg-[#050505]"] { background-color: #fbf8f1 !important; }
-html.light [class~="bg-[#0A0A0A]"],
-html.light [class~="bg-[#0a0a0a]"] { background-color: #f2eee5 !important; }
-html.light [class~="bg-[#0D0D0D]"],
-html.light [class~="bg-[#111111]"],
-html.light [class~="bg-[#121212]"] { background-color: #eee8dd !important; }
-html.light [class~="bg-[#141414]"],
-html.light [class~="bg-[#161616]"],
-html.light [class~="bg-[#1A1A1A]"],
-html.light [class~="bg-[#1C1C1C]"] { background-color: #ffffff !important; }
-html.light [class~="text-white"] { color: #191815 !important; }
-html.light [class~="text-[#E0E0E0]"],
-html.light [class~="text-[#CCCCCC]"],
-html.light [class~="text-[#B5B5B5]"] { color: #5e5a53 !important; }
-html.light [class~="text-[#8E8E8E]"],
-html.light [class~="text-[#737373]"],
-html.light [class~="text-[#606060]"] { color: #777168 !important; }
-html.light [class*="border-white/"] { border-color: rgba(25, 24, 21, 0.1) !important; }
+/* Light mode belongs to the public site. The admin workspace stays dark so
+   stored public theme preferences cannot reduce dashboard contrast. */
+html.light .site-shell [class~="bg-[#050505]"] { background-color: #fbf8f1 !important; }
+html.light .site-shell [class~="bg-[#0A0A0A]"],
+html.light .site-shell [class~="bg-[#0a0a0a]"] { background-color: #f2eee5 !important; }
+html.light .site-shell [class~="bg-[#0D0D0D]"],
+html.light .site-shell [class~="bg-[#111111]"],
+html.light .site-shell [class~="bg-[#121212]"] { background-color: #eee8dd !important; }
+html.light .site-shell [class~="bg-[#141414]"],
+html.light .site-shell [class~="bg-[#161616]"],
+html.light .site-shell [class~="bg-[#1A1A1A]"],
+html.light .site-shell [class~="bg-[#1C1C1C]"] { background-color: #ffffff !important; }
+html.light .site-shell [class~="text-white"] { color: #191815 !important; }
+html.light .site-shell [class~="text-[#E0E0E0]"],
+html.light .site-shell [class~="text-[#CCCCCC]"],
+html.light .site-shell [class~="text-[#B5B5B5]"] { color: #5e5a53 !important; }
+html.light .site-shell [class~="text-[#8E8E8E]"],
+html.light .site-shell [class~="text-[#737373]"],
+html.light .site-shell [class~="text-[#606060]"] { color: #777168 !important; }
+html.light .site-shell [class*="border-white/"] { border-color: rgba(25, 24, 21, 0.1) !important; }
 html.light .always-dark,
 html.light .always-dark [class~="text-white"] { color: #ffffff !important; }
+
+.admin-shell {
+  color-scheme: dark;
+  color: #f7f4ec;
+  background:
+    radial-gradient(circle at 88% -8%, rgba(212, 175, 55, 0.11), transparent 27rem),
+    radial-gradient(circle at 15% 105%, rgba(64, 85, 120, 0.1), transparent 30rem),
+    #090c11;
+}
+
+.admin-shell::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.26;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 32px 32px;
+  content: "";
+}
+
+.admin-scrollbar {
+  scrollbar-color: #3b414b transparent;
+  scrollbar-width: thin;
+}
+
+.admin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.admin-scrollbar::-webkit-scrollbar-thumb { background: #3b414b; }
 
 .hero-section {
   background:
@@ -560,7 +591,7 @@ html.light .hero-station-caption {
   box-shadow: 0 18px 46px rgba(0,0,0,.28), 0 1px 0 rgba(212,175,55,.2) inset;
 }
 
-html.light .premium-card:hover {
+html.light .site-shell .premium-card:hover {
   background: #fffdf9 !important;
   box-shadow: 0 18px 46px rgba(72,56,24,.12), 0 1px 0 rgba(180,139,37,.18) inset;
 }

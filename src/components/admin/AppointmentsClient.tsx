@@ -11,9 +11,6 @@ import {
   MessageSquare,
   Phone,
   Edit2,
-  CheckCircle2,
-  Clock,
-  Trash2,
   RefreshCw,
   X,
 } from "lucide-react";
@@ -23,11 +20,49 @@ import { Badge } from "../ui/Badge";
 import { Modal } from "../ui/Modal";
 import { Input, Textarea } from "../ui/Input";
 
+interface Appointment {
+  id: string;
+  appointmentNumber: string;
+  source: string;
+  status: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  totalPrice: number;
+  staffId?: string | null;
+  customerNotes?: string | null;
+  adminNotes?: string | null;
+  customer: { name: string; phone: string };
+  service: { name: string };
+  staff?: { name: string } | null;
+}
+
+interface ServiceOption {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+}
+
+interface StaffOption {
+  id: string;
+  name: string;
+  role: string;
+}
+
+interface AppointmentFilters {
+  search: string;
+  status: string;
+  date: string;
+  staffId: string;
+}
+
 export const AppointmentsClient = () => {
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [servicesList, setServicesList] = useState<any[]>([]);
-  const [staffList, setStaffList] = useState<any[]>([]);
+  const [servicesList, setServicesList] = useState<ServiceOption[]>([]);
+  const [staffList, setStaffList] = useState<StaffOption[]>([]);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -36,7 +71,7 @@ export const AppointmentsClient = () => {
   const [staffFilter, setStaffFilter] = useState("ALL");
 
   // Selected appointment for details modal
-  const [selectedAppt, setSelectedAppt] = useState<any | null>(null);
+  const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editStatus, setEditStatus] = useState("");
   const [editAdminNotes, setEditAdminNotes] = useState("");
@@ -56,14 +91,21 @@ export const AppointmentsClient = () => {
   });
   const [isCreatingWalkIn, setIsCreatingWalkIn] = useState(false);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (
+    filters: AppointmentFilters = {
+      search,
+      status: statusFilter,
+      date: dateFilter,
+      staffId: staffFilter,
+    }
+  ) => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (search) params.set("search", search);
-      if (statusFilter !== "ALL") params.set("status", statusFilter);
-      if (dateFilter) params.set("date", dateFilter);
-      if (staffFilter !== "ALL") params.set("staffId", staffFilter);
+      if (filters.search) params.set("search", filters.search);
+      if (filters.status !== "ALL") params.set("status", filters.status);
+      if (filters.date) params.set("date", filters.date);
+      if (filters.staffId !== "ALL") params.set("staffId", filters.staffId);
 
       const res = await fetch(`/api/admin/appointments?${params.toString()}`);
       const json = await res.json();
@@ -76,12 +118,26 @@ export const AppointmentsClient = () => {
   };
 
   useEffect(() => {
-    fetchAppointments();
+    let isActive = true;
+
+    const loadInitialAppointments = async () => {
+      try {
+        const res = await fetch("/api/admin/appointments");
+        const json = await res.json();
+        if (isActive) setAppointments(json.appointments || []);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    };
+
+    void loadInitialAppointments();
 
     fetch("/api/admin/services")
       .then((r) => r.json())
       .then((d) => {
-        if (d.services) {
+        if (isActive && d.services) {
           setServicesList(d.services);
           if (d.services[0]) {
             setWalkInForm((prev) => ({ ...prev, serviceId: d.services[0].id }));
@@ -92,16 +148,20 @@ export const AppointmentsClient = () => {
     fetch("/api/admin/staff")
       .then((r) => r.json())
       .then((d) => {
-        if (d.staff) setStaffList(d.staff);
+        if (isActive && d.staff) setStaffList(d.staff);
       });
-  }, [statusFilter, dateFilter, staffFilter]);
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     fetchAppointments();
   };
 
-  const openEditModal = (appt: any) => {
+  const openEditModal = (appt: Appointment) => {
     setSelectedAppt(appt);
     setEditStatus(appt.status);
     setEditAdminNotes(appt.adminNotes || "");
@@ -182,21 +242,32 @@ export const AppointmentsClient = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       {/* Header with Title and Global Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold font-display text-white">Appointments Management</h2>
-          <p className="text-xs sm:text-sm text-[#8E8E8E]">
-            Filter, search, update status, and manage salon appointments.
-          </p>
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex items-start gap-3.5">
+          <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#E0B83F]">
+            <CalendarDays className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#D4AF37]">
+              Operations
+            </p>
+            <h2 className="font-display text-2xl font-bold leading-tight text-white sm:text-3xl">
+              Appointments
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-[#AEB4BD]">
+              Search bookings, update their status, and register walk-in customers.
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <a href="/api/admin/appointments/export-csv" download>
+        <div className="flex flex-wrap items-center gap-2.5 sm:pl-14 xl:pl-0">
+          <a href="/api/admin/appointments/export-csv" download className="flex-1 sm:flex-none">
             <Button
               variant="secondary"
               size="sm"
+              className="h-10 w-full rounded-xl bg-[#151A22] px-4 text-[#E7E9EC]"
               leftIcon={<Download className="w-3.5 h-3.5 text-[#D4AF37]" />}
             >
               Export CSV
@@ -206,6 +277,7 @@ export const AppointmentsClient = () => {
           <Button
             variant="secondary"
             size="sm"
+            className="h-10 flex-1 rounded-xl bg-[#151A22] px-4 text-[#E7E9EC] sm:flex-none"
             onClick={() => window.print()}
             leftIcon={<Printer className="w-3.5 h-3.5 text-[#D4AF37]" />}
           >
@@ -214,6 +286,7 @@ export const AppointmentsClient = () => {
 
           <Button
             size="sm"
+            className="h-10 flex-1 rounded-xl px-4 sm:flex-none"
             onClick={() => setIsWalkInOpen(true)}
             leftIcon={<PlusCircle className="w-4 h-4" />}
           >
@@ -223,26 +296,37 @@ export const AppointmentsClient = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <Card className="bg-[#141414] border-white/5 p-4 space-y-4">
-        <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+      <Card className="rounded-2xl border-white/[0.08] bg-[#11161D] p-4 shadow-[0_16px_45px_rgba(0,0,0,0.18)] sm:p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#E7E9EC]">
+            <Filter className="h-4 w-4 text-[#D4AF37]" />
+            Find appointments
+          </div>
+          <span className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-[#747D89] sm:block">
+            Live database
+          </span>
+        </div>
+        <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12">
           {/* Search Box */}
-          <div className="sm:col-span-4 relative">
-            <Search className="w-4 h-4 text-[#737373] absolute left-3 top-1/2 -translate-y-1/2" />
+          <label className="relative sm:col-span-2 xl:col-span-4">
+            <span className="sr-only">Search appointments</span>
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#87909C]" />
             <input
               type="text"
               placeholder="Search by customer name, phone, or CH- ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-[#606060] outline-none focus:border-[#D4AF37]"
+              className="h-11 w-full rounded-xl border border-white/10 bg-[#0C1016] pl-10 pr-3 text-sm text-white outline-none transition placeholder:text-[#69727E] hover:border-white/20 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/10"
             />
-          </div>
+          </label>
 
           {/* Status Filter */}
-          <div className="sm:col-span-3">
+          <label className="xl:col-span-2">
+            <span className="sr-only">Filter by status</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-[#D4AF37]"
+              className="h-11 w-full rounded-xl border border-white/10 bg-[#0C1016] px-3 text-sm text-white outline-none transition hover:border-white/20 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/10"
             >
               <option value="ALL">All Statuses</option>
               <option value="PENDING">PENDING</option>
@@ -251,21 +335,38 @@ export const AppointmentsClient = () => {
               <option value="CANCELLED">CANCELLED</option>
               <option value="NO_SHOW">NO SHOW</option>
             </select>
-          </div>
+          </label>
+
+          <label className="xl:col-span-2">
+            <span className="sr-only">Filter by barber</span>
+            <select
+              value={staffFilter}
+              onChange={(e) => setStaffFilter(e.target.value)}
+              className="h-11 w-full rounded-xl border border-white/10 bg-[#0C1016] px-3 text-sm text-white outline-none transition hover:border-white/20 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/10"
+            >
+              <option value="ALL">All Barbers</option>
+              {staffList.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.name}
+                </option>
+              ))}
+            </select>
+          </label>
 
           {/* Date Filter */}
-          <div className="sm:col-span-3">
+          <label className="xl:col-span-2">
+            <span className="sr-only">Filter by appointment date</span>
             <input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-[#D4AF37]"
+              className="h-11 w-full rounded-xl border border-white/10 bg-[#0C1016] px-3 text-sm text-white outline-none transition hover:border-white/20 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/10"
             />
-          </div>
+          </label>
 
           {/* Submit Search Button */}
-          <div className="sm:col-span-2 flex gap-2">
-            <Button type="submit" size="sm" className="flex-1 text-xs py-2">
+          <div className="flex gap-2 sm:col-span-2 xl:col-span-2">
+            <Button type="submit" size="sm" className="h-11 flex-1 rounded-xl px-4 text-xs">
               Filter
             </Button>
             {(search || statusFilter !== "ALL" || dateFilter || staffFilter !== "ALL") && (
@@ -276,9 +377,14 @@ export const AppointmentsClient = () => {
                   setStatusFilter("ALL");
                   setDateFilter("");
                   setStaffFilter("ALL");
-                  setTimeout(fetchAppointments, 50);
+                  void fetchAppointments({
+                    search: "",
+                    status: "ALL",
+                    date: "",
+                    staffId: "ALL",
+                  });
                 }}
-                className="p-2 bg-[#1A1A1A] hover:bg-[#252525] text-[#8E8E8E] hover:text-white rounded-lg border border-white/10 text-xs"
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-[#0C1016] text-[#AEB4BD] transition hover:border-white/20 hover:bg-[#1A2029] hover:text-white"
                 title="Reset filters"
               >
                 <X className="w-4 h-4" />
@@ -289,71 +395,152 @@ export const AppointmentsClient = () => {
       </Card>
 
       {/* Appointments Data Table */}
-      <Card className="bg-[#141414] border-white/10 p-0 overflow-hidden shadow-xl">
+      <Card className="overflow-hidden rounded-2xl border-white/[0.08] bg-[#11161D] p-0 shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
+        <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-4 sm:px-5">
+          <div>
+            <h3 className="text-sm font-bold text-white">Appointment register</h3>
+            <p className="mt-0.5 text-xs text-[#89929E]">
+              {isLoading
+                ? "Updating records..."
+                : `${appointments.length} appointment${appointments.length === 1 ? "" : "s"} found`}
+            </p>
+          </div>
+          <span className="flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/[0.07] px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+            Synced
+          </span>
+        </div>
         {isLoading ? (
           <div className="py-20 text-center space-y-3">
             <RefreshCw className="w-6 h-6 text-[#D4AF37] animate-spin mx-auto" />
             <p className="text-xs text-[#8E8E8E]">Loading appointments...</p>
           </div>
         ) : appointments.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+          <div>
+            <div className="divide-y divide-white/[0.07] md:hidden">
+              {appointments.map((appt) => (
+                <article key={appt.id} className="space-y-4 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-xs font-bold text-[#E7C75F]">
+                        {appt.appointmentNumber}
+                      </p>
+                      <h4 className="mt-1 text-base font-bold text-white">{appt.customer.name}</h4>
+                      <p className="text-xs text-[#98A1AC]">{appt.customer.phone}</p>
+                    </div>
+                    <Badge variant={getStatusBadgeVariant(appt.status)} size="sm">
+                      {appt.status}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-white/[0.07] bg-[#0C1016] p-3.5 text-xs">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#737D89]">Service</p>
+                      <p className="mt-1 font-semibold text-[#E7E9EC]">{appt.service.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#737D89]">Barber</p>
+                      <p className="mt-1 font-semibold text-[#E7E9EC]">{appt.staff?.name || "Any barber"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#737D89]">Date & time</p>
+                      <p className="mt-1 font-semibold text-[#E7E9EC]">{appt.date}</p>
+                      <p className="text-[#D4AF37]">{appt.startTime} – {appt.endTime}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#737D89]">Amount</p>
+                      <p className="mt-1 font-display text-base font-bold text-[#E7C75F]">₹{appt.totalPrice}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(appt)}
+                      className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 text-xs font-semibold text-[#F0D478]"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      Manage
+                    </button>
+                    <a
+                      href={`https://wa.me/91${appt.customer.phone.replace(/[^0-9]/g, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`WhatsApp ${appt.customer.name}`}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-300"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </a>
+                    <a
+                      href={`tel:${appt.customer.phone}`}
+                      aria-label={`Call ${appt.customer.name}`}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[#CBD0D6]"
+                    >
+                      <Phone className="h-4 w-4" />
+                    </a>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+            <table className="w-full border-collapse text-left text-[13px]">
               <thead>
-                <tr className="bg-[#1C1C1C] text-[#8E8E8E] uppercase tracking-wider border-b border-white/10">
-                  <th className="py-3.5 px-4 font-semibold">Reference</th>
-                  <th className="py-3.5 px-4 font-semibold">Customer</th>
-                  <th className="py-3.5 px-4 font-semibold">Service</th>
-                  <th className="py-3.5 px-4 font-semibold">Barber</th>
-                  <th className="py-3.5 px-4 font-semibold">Date & Time</th>
-                  <th className="py-3.5 px-4 font-semibold">Amount</th>
-                  <th className="py-3.5 px-4 font-semibold">Status</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                <tr className="border-b border-white/[0.08] bg-[#0C1016] text-[10px] uppercase tracking-[0.14em] text-[#89929E]">
+                  <th className="px-4 py-4 font-semibold">Reference</th>
+                  <th className="px-4 py-4 font-semibold">Customer</th>
+                  <th className="px-4 py-4 font-semibold">Service</th>
+                  <th className="px-4 py-4 font-semibold">Barber</th>
+                  <th className="px-4 py-4 font-semibold">Date & Time</th>
+                  <th className="px-4 py-4 font-semibold">Amount</th>
+                  <th className="px-4 py-4 font-semibold">Status</th>
+                  <th className="px-4 py-4 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-white/[0.06]">
                 {appointments.map((appt) => (
                   <tr
                     key={appt.id}
-                    className="hover:bg-white/[0.02] transition-colors group"
+                    className="group transition-colors hover:bg-white/[0.025]"
                   >
-                    <td className="py-3.5 px-4 font-mono font-bold text-white whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-4 font-mono text-xs font-bold text-[#E7C75F]">
                       {appt.appointmentNumber}
                       {appt.source === "WALK_IN" && (
-                        <span className="ml-1.5 text-[9px] bg-white/10 text-[#B5B5B5] px-1 py-0.2 rounded">
+                        <span className="ml-1.5 rounded bg-white/[0.07] px-1.5 py-0.5 text-[9px] text-[#B8BEC6]">
                           Walk-In
                         </span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-4">
                       <div className="font-bold text-white">{appt.customer.name}</div>
-                      <div className="text-[#8E8E8E] text-[11px]">{appt.customer.phone}</div>
+                      <div className="mt-0.5 text-[11px] text-[#929BA6]">{appt.customer.phone}</div>
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="text-white font-medium">{appt.service.name}</div>
-                      <div className="text-[#737373] text-[11px]">{appt.duration} mins</div>
+                    <td className="whitespace-nowrap px-4 py-4">
+                      <div className="font-medium text-[#E7E9EC]">{appt.service.name}</div>
+                      <div className="mt-0.5 text-[11px] text-[#7E8793]">{appt.duration} mins</div>
                     </td>
-                    <td className="py-3.5 px-4 text-[#CCCCCC] whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-4 text-[#C7CCD2]">
                       {appt.staff ? appt.staff.name : "Any Master Barber"}
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-4">
                       <div className="text-white font-medium">{appt.date}</div>
                       <div className="text-[#D4AF37] text-[11px]">
                         {appt.startTime} – {appt.endTime}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 font-bold text-[#D4AF37] font-display text-sm whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-4 font-display text-sm font-bold text-[#E7C75F]">
                       ₹{appt.totalPrice}
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-4">
                       <Badge variant={getStatusBadgeVariant(appt.status)} size="sm">
                         {appt.status}
                       </Badge>
                     </td>
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => openEditModal(appt)}
-                          className="p-1.5 rounded-lg bg-[#1C1C1C] hover:bg-[#252525] text-white border border-white/10 hover:border-[#D4AF37]/50 transition-colors"
+                          className="rounded-lg border border-white/10 bg-[#171C24] p-2 text-[#D7DBE0] transition-colors hover:border-[#D4AF37]/50 hover:bg-[#202630] hover:text-white"
                           title="Edit Appointment"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -363,7 +550,7 @@ export const AppointmentsClient = () => {
                           href={`https://wa.me/91${appt.customer.phone.replace(/[^0-9]/g, "")}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg bg-[#1C1C1C] hover:bg-emerald-950/40 text-[#25D366] border border-white/10 hover:border-[#25D366]/40 transition-colors"
+                          className="rounded-lg border border-emerald-400/15 bg-emerald-400/[0.06] p-2 text-emerald-300 transition-colors hover:border-emerald-400/35 hover:bg-emerald-400/10"
                           title="WhatsApp Customer"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
@@ -371,7 +558,7 @@ export const AppointmentsClient = () => {
 
                         <a
                           href={`tel:${appt.customer.phone}`}
-                          className="p-1.5 rounded-lg bg-[#1C1C1C] hover:bg-white/10 text-[#B5B5B5] hover:text-white border border-white/10 transition-colors"
+                          className="rounded-lg border border-white/10 bg-[#171C24] p-2 text-[#BFC5CC] transition-colors hover:bg-[#202630] hover:text-white"
                           title="Call Customer"
                         >
                           <Phone className="w-3.5 h-3.5" />
@@ -382,6 +569,7 @@ export const AppointmentsClient = () => {
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
         ) : (
           <div className="py-16 text-center space-y-2 p-6">

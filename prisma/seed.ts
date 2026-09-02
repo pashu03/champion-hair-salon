@@ -7,7 +7,11 @@ async function main() {
   console.log("🌱 Seeding Champion Hair Salon database...");
 
   // 1. Admin User
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@championhairsalon.com";
+  const adminEmail = (
+    process.env.ADMIN_EMAIL || "admin@championhairsalon.com"
+  )
+    .trim()
+    .toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!adminPassword) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminHeader } from "./AdminHeader";
@@ -14,27 +14,31 @@ export const AdminLayoutClient = ({
   session: SessionUser | null;
 }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (pathname !== "/admin/login" && !session) {
+      router.replace("/admin/login");
+    }
+  }, [pathname, router, session]);
 
   // If on login page, just render children without sidebar
   if (pathname === "/admin/login") {
-    return <div className="min-h-screen bg-[#050505] text-white">{children}</div>;
+    return <div className="admin-shell min-h-screen bg-[#050505] text-white">{children}</div>;
   }
 
   // If not authenticated and not on login, redirect to login
   if (!session) {
-    if (typeof window !== "undefined") {
-      window.location.href = "/admin/login";
-    }
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
-        <p className="text-sm text-[#8E8E8E]">Redirecting to admin login...</p>
+      <div className="admin-shell min-h-screen bg-[#090c11] text-white flex items-center justify-center">
+        <p className="text-sm font-medium text-[#A9AFB8]">Opening secure admin login...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white flex">
+    <div className="admin-shell min-h-screen bg-[#090c11] text-[#F7F4EC] flex">
       {/* Sidebar */}
       <AdminSidebar
         isMobileOpen={isMobileOpen}
@@ -42,12 +46,12 @@ export const AdminLayoutClient = ({
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
+      <div className="flex-1 lg:ml-72 flex flex-col min-w-0">
         <AdminHeader
           onToggleMobile={() => setIsMobileOpen(!isMobileOpen)}
           session={session}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="relative flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 xl:p-10">
           {children}
         </main>
       </div>
