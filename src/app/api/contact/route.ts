@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
+import { getDatabaseConfiguration } from "@/lib/database-url";
 import { contactFormSchema } from "@/lib/validations";
 
 export async function POST(req: Request) {
@@ -18,10 +20,28 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, enquiry }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: error.issues[0]?.message || "Please check your details." },
+        { status: 400 }
+      );
+    }
+
+    const database = getDatabaseConfiguration();
+    const code = !database.configured
+      ? "DATABASE_NOT_CONFIGURED"
+      : !database.isPostgreSQL
+        ? "DATABASE_URL_INVALID"
+        : "CONTACT_SERVICE_ERROR";
+
+    console.error(`Contact API Error [${code}]:`, error);
     return NextResponse.json(
-      { error: error?.message || "Failed to submit contact enquiry" },
-      { status: 400 }
+      {
+        error: "We could not send your message right now. Please try again.",
+        code,
+      },
+      { status: 503 }
     );
   }
 }

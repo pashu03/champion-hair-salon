@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateAvailableSlots, isValidDateString } from "@/lib/availability";
-import { configureDatabaseUrl } from "@/lib/database-url";
+import { getDatabaseConfiguration } from "@/lib/database-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,10 +39,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(availability, { headers: responseHeaders });
   } catch (error: unknown) {
-    const database = configureDatabaseUrl();
+    const database = getDatabaseConfiguration();
     const code = !database.configured
       ? "DATABASE_NOT_CONFIGURED"
-      : process.env.VERCEL === "1" && !database.isPostgreSQL
+      : !database.isPostgreSQL
         ? "DATABASE_URL_INVALID"
         : "AVAILABILITY_SERVICE_ERROR";
 

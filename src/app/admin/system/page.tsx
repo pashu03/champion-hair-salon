@@ -20,15 +20,10 @@ export const dynamic = "force-dynamic";
 const formatNumber = new Intl.NumberFormat("en-IN");
 
 const getDatabaseDetails = () => {
-  const databaseUrl = process.env.DATABASE_URL?.trim() || "";
-  const isLocalSqlite = databaseUrl.startsWith("file:") || !databaseUrl;
-
   return {
-    engine: isLocalSqlite ? "SQLite" : "PostgreSQL",
-    location: isLocalSqlite
-      ? "prisma/dev.db (on this computer)"
-      : "Remote production database",
-    environment: isLocalSqlite ? "Local development" : "Production / hosted",
+    engine: "PostgreSQL",
+    location: "Supabase hosted database",
+    environment: "Production / hosted",
   };
 };
 

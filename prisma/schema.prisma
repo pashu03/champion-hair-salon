@@ -1,13 +1,12 @@
-// Prisma schema for Champion Hair Salon
-// Development: SQLite (zero-setup local execution)
-// Production: PostgreSQL (Neon / Supabase / Vercel Postgres) - see schema.postgresql.prisma
+// Supabase PostgreSQL schema for Champion Hair Salon.
+// No local file database is used.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

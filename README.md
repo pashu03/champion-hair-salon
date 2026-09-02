@@ -49,7 +49,7 @@ The application pairs a dark luxury customer experience with an appointment book
 | **Language** | TypeScript (Strict mode) |
 | **Styling** | Tailwind CSS (Custom Dark Luxury Theme: `#050505`, `#111111`, `#161616`, `#D4AF37` Gold) |
 | **Typography** | Playfair Display (Headings) + Inter (Body/UI) |
-| **Database & ORM**| Prisma ORM (SQLite for instant local dev, PostgreSQL for production) |
+| **Database & ORM**| Prisma ORM with Supabase PostgreSQL |
 | **Icons** | Lucide React |
 | **Validation** | Zod |
 | **Auth & Security** | `bcryptjs` (Password Hashing) + `jose` (JWT Session Cookies) |
@@ -72,12 +72,13 @@ Copy `.env.example` to `.env`:
 cp .env.example .env
 ```
 
-Default `.env` contents for zero-setup local execution:
+Use the hosted Supabase database instead of a local database:
 ```env
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+DIRECT_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres"
 JWT_SECRET="replace-with-a-long-random-secret"
 ADMIN_EMAIL="admin@championhairsalon.com"
-ADMIN_PASSWORD="choose-a-strong-local-password"
+ADMIN_PASSWORD="choose-a-strong-admin-password"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 NEXT_PUBLIC_WHATSAPP_NUMBER="918888857057"
 NEXT_PUBLIC_PHONE_NUMBER="+91 8888857057"
@@ -86,8 +87,8 @@ NEXT_PUBLIC_ALT_PHONE="+91 9158846787"
 
 ### 3. Initialize & Seed Database
 ```bash
-# Push schema and generate Prisma client
-npm run db:push
+# Generate Prisma Client for PostgreSQL
+npx prisma generate
 
 # Seed with official salon services, hours, owner profile and admin user
 npm run db:seed
@@ -112,35 +113,38 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - **Admin Email:** the `ADMIN_EMAIL` used when seeding
 - **Password:** the `ADMIN_PASSWORD` used when seeding
 
-These credentials are for local development only. Production seeding requires
-`ADMIN_PASSWORD`, and the login page never displays or pre-fills credentials.
+The credentials come from the environment used to seed each database. Vercel
+requires `ADMIN_PASSWORD`, and the login page never displays or pre-fills it.
 
 ---
 
-## 🌐 Production Deployment (Vercel + PostgreSQL)
+## 🌐 Production Deployment (Vercel + Supabase)
 
-### 1. PostgreSQL Database (Vercel Marketplace / Neon / Supabase)
-1. Create and connect a PostgreSQL database. A Vercel Marketplace database normally adds `DATABASE_URL` to the project automatically.
-2. Otherwise, set the production and preview `DATABASE_URL` in Vercel:
+### 1. Supabase PostgreSQL Database
+1. Open **Connect** in the Supabase project dashboard.
+2. Copy the **Transaction pooler** URI for Vercel application traffic.
+3. Set `DATABASE_URL` for Production, Preview, and Development in Vercel:
    ```env
-    DATABASE_URL="postgresql://username:password@ep-sample.region.neon.tech/champion_db?sslmode=require"
+   DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
    ```
 
-The Prisma config selects `schema.postgresql.prisma` automatically when
-`VERCEL=1`. The Vercel build script generates the correct client and applies
-the committed PostgreSQL migrations before running `next build`.
+URL-encode special characters in the username or password. For example, `@`
+inside a password must be written as `%40`.
 
 ### 2. Deploy to Vercel
 1. Import repository on [Vercel](https://vercel.com).
-2. Set Environment Variables:
+2. Set these Environment Variables for the deployment environment:
    - `DATABASE_URL`
    - `JWT_SECRET` (a long random value)
    - `NEXT_PUBLIC_APP_URL`
    - `NEXT_PUBLIC_WHATSAPP_NUMBER`
-3. Deploy the project. The initial schema migration runs automatically.
-4. Seed the production database once from a trusted terminal with
-   `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and
-   `PRISMA_SCHEMA_PROVIDER=postgresql` set, then run `npm run db:seed`.
+3. Redeploy after changing environment variables. The Vercel build validates
+   the Supabase PostgreSQL URL, generates Prisma Client, and runs `next build`.
+   It does not recreate or modify the schema you already installed in Supabase.
+
+If the database still needs the initial salon data or admin user, run
+`npm run db:seed` once from a trusted terminal with `DATABASE_URL`,
+`ADMIN_EMAIL`, and `ADMIN_PASSWORD` set.
 
 Never commit production database, JWT, or admin secrets.
 

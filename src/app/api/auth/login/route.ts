@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSessionToken, setSessionCookie } from "@/lib/auth";
-import { configureDatabaseUrl } from "@/lib/database-url";
+import { getDatabaseConfiguration } from "@/lib/database-url";
 import { adminLoginSchema } from "@/lib/validations";
 
 export const runtime = "nodejs";
@@ -61,10 +61,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const database = configureDatabaseUrl();
+    const database = getDatabaseConfiguration();
     const isDatabaseConfigurationError =
-      !database.configured ||
-      (process.env.VERCEL === "1" && !database.isPostgreSQL);
+      !database.configured || !database.isPostgreSQL;
 
     console.error(
       `Admin login error [${

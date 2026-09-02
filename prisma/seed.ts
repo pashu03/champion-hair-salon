@@ -9,20 +9,14 @@ async function main() {
   // 1. Admin User
   const adminEmail = process.env.ADMIN_EMAIL || "admin@championhairsalon.com";
   const adminPassword = process.env.ADMIN_PASSWORD;
-  const isRemoteDatabase = /^(postgres(?:ql)?|prisma\+postgres):\/\//i.test(
-    process.env.DATABASE_URL || ""
-  );
 
-  if (isRemoteDatabase && !adminPassword) {
+  if (!adminPassword) {
     throw new Error(
-      "ADMIN_PASSWORD is required when seeding a remote production database."
+      "ADMIN_PASSWORD is required when seeding the Supabase database."
     );
   }
 
-  const adminPasswordHash = await bcrypt.hash(
-    adminPassword || "Champion@1998",
-    10
-  );
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
   await prisma.adminUser.upsert({
     where: { email: adminEmail },
     update: {
