@@ -33,7 +33,8 @@ describe("Validation Schemas", () => {
 
     const phoneResult = bookingFormSchema.safeParse(invalidPhone);
     expect(phoneResult.success).toBe(false);
-
+      //  Date added
+      
     const invalidDate = {
       serviceId: "srv-hair-cut",
       date: "01-09-2026", // wrong format, expects YYYY-MM-DD
